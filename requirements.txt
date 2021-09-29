@@ -1,4 +1,5 @@
 bluesky
+databroker
 ophyd
 numpy
 ansiwrap
