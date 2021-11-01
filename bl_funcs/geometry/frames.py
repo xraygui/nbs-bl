@@ -3,6 +3,31 @@ from .linalg import *
 from .polygons import *
 
 
+class Axis:
+    def __init__(self, x, scale=1, parent=None):
+        self.reset(x, parent=parent)
+
+    def reset(self, x, parent=None):
+        self.x0 = x
+        self.parent = parent
+        
+    def _to_global(self, x):
+        return x + x0
+
+    def _to_frame(self, x):
+        return x - x0
+
+
+    def frame_to_global(self, x_frame, offset=0):
+        x_global = self._to_global(x_frame) + offset
+        if self.parent is not None:
+            return self.parent.frame_to_global(x_global)
+        else:
+            return x_global
+
+    def global_to_frame(self, x_global, offset=0):
+        
+
 class Frame:
     def __init__(self, p1, p2, p3, parent=None):
         """
@@ -26,7 +51,7 @@ class Frame:
         self.Ainv = self.A.T
         self.parent = parent
         self.r0 = rad_to_deg(self._roffset())
-
+    
     def _roffset(self):
         """
         R offset relative to the GLOBAL frame (not the parent frame!)
@@ -313,3 +338,10 @@ class Panel(Frame):
             return -1*distance
         else:
             return distance
+
+def make_geometry(*args, *, **kwargs):
+    if len(args) == 3:
+        if "height" in kwargs and "width" in kwargs:
+            return Panel(*args, **kwargs)
+        else:
+            return Frame(*args, **kwargs)
