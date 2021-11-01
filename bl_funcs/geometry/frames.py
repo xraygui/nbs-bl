@@ -4,29 +4,30 @@ from .polygons import *
 
 
 class Axis:
-    def __init__(self, x, scale=1, parent=None):
-        self.reset(x, parent=parent)
+    def __init__(self, x0, scale=1, parent=None):
+        self.reset(x0, parent=parent)
 
-    def reset(self, x, parent=None):
-        self.x0 = x
+    def reset(self, x0, scale, parent=None):
+        self.x0 = x0
+        self.scale = scale
         self.parent = parent
         
     def _to_global(self, x):
-        return x + x0
+        return x*self.scale + self.x0
 
     def _to_frame(self, x):
-        return x - x0
+        return x*self.scale - self.x0
 
 
     def frame_to_global(self, x_frame, offset=0):
-        x_global = self._to_global(x_frame) + offset
+        x_global = self._to_global(x_frame)
         if self.parent is not None:
-            return self.parent.frame_to_global(x_global)
+            return self.parent.frame_to_global(x_global, offset)
         else:
             return x_global
 
     def global_to_frame(self, x_global, offset=0):
-        
+        x_frame = self._to_frame(x_global)
 
 class Frame:
     def __init__(self, p1, p2, p3, parent=None):
@@ -263,6 +264,19 @@ class Panel(Frame):
         self.edges = [vec(0, 0, 0), vec(width, 0, 0), vec(width, height, 0),
                       vec(0, height, 0)]
 
+    def frame_to_beam(self, fx, fy, fz, fr=0, origin="edge"):
+        if origin == "center":
+            fx += width/2.0
+            fy += height/2.0
+        return super().frame_to_beam(fx, fy, fz, fr)
+
+    def beam_to_frame(self, gx, gy, gz, gr=0, origin="edge"):
+        fx, fy, fz, fr = super().beam_to_frame(gx, gy, gz, gr)
+        if origin == "center":
+            fx -= width/2.0
+            fy -= height/2.0
+        return fx, fy, fz, fr
+    
     def real_edges(self, manip, r_manip):
         """
         Finds the vertices of the panel in global coordinate system,
@@ -339,7 +353,7 @@ class Panel(Frame):
         else:
             return distance
 
-def make_geometry(*args, *, **kwargs):
+def make_geometry(*args, **kwargs):
     if len(args) == 3:
         if "height" in kwargs and "width" in kwargs:
             return Panel(*args, **kwargs)
