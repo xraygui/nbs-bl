@@ -11,13 +11,12 @@ class Axis:
         self.x0 = x0
         self.scale = scale
         self.parent = parent
-        
+
     def _to_global(self, x):
         return x*self.scale + self.x0
 
     def _to_frame(self, x):
         return x*self.scale - self.x0
-
 
     def frame_to_global(self, x_frame, offset=0):
         x_global = self._to_global(x_frame)
@@ -45,6 +44,7 @@ class Frame:
         self.reset(p1, p2, p3, parent=parent)
 
     def reset(self, p1, p2, p3, parent=None):
+        self.vectors = [p1, p2, p3]
         self.p0 = p1
         self._basis = constructBasis(p1, p2, p3)
         # r_offset
@@ -158,7 +158,7 @@ class Frame:
         v_frame = self._to_frame(v_manip)
         return v_frame
 
-    def frame_to_beam(self, fx, fy, fz, fr=0):
+    def frame_to_beam(self, fx, fy, fz, fr=0, **kwargs):
         """
         Given a frame coordinate, and rotation, find the manipulator position and rotation
         that places the frame coordinate in the beam path
@@ -176,7 +176,7 @@ class Frame:
         gx, gy, gz = (v_global[0], v_global[1], v_global[2])
         return gx, gy, gz, gr
 
-    def beam_to_frame(self, gx, gy, gz, gr=0):
+    def beam_to_frame(self, gx, gy, gz, gr=0, **kwargs):
         """
         Given a manipulator coordinate and rotation, find the beam intersection
         position and incidence angle in the frame coordinates.
@@ -266,17 +266,17 @@ class Panel(Frame):
 
     def frame_to_beam(self, fx, fy, fz, fr=0, origin="edge"):
         if origin == "center":
-            fx += width/2.0
-            fy += height/2.0
+            fx += self.width/2.0
+            fy += self.height/2.0
         return super().frame_to_beam(fx, fy, fz, fr)
 
     def beam_to_frame(self, gx, gy, gz, gr=0, origin="edge"):
         fx, fy, fz, fr = super().beam_to_frame(gx, gy, gz, gr)
         if origin == "center":
-            fx -= width/2.0
-            fy -= height/2.0
+            fx -= self.width/2.0
+            fy -= self.height/2.0
         return fx, fy, fz, fr
-    
+
     def real_edges(self, manip, r_manip):
         """
         Finds the vertices of the panel in global coordinate system,

@@ -66,7 +66,7 @@ def find_max_deriv(plan, dets, *args):
             yield from mv(m, max_val)
         return ret
     return (yield from inner_maximizer())
-    
+
 
 def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None):
     detname = dets[0].name
@@ -96,7 +96,8 @@ def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None):
                                           precision=precision, maxct=maxct)
     else:
         print(f"{detname} halfmax at {motor.name}:{motor.position}")
-        print(f"Value: {current}, Max: {maxct}, precision: {precision} reached")
+        print(f"Value: {current}, Max: {maxct}, "
+              f"precision: {precision} reached")
         pos = motor.position
         yield from mv(motor, pos)
     return pos
@@ -133,6 +134,8 @@ def threshold_adaptive(dets, motor, threshold, step=2, limit=15):
     if current > threshold:
         return motor.position
     else:
-        raise ValueError(f"Detector {detname} did not exceed {threshold} after {limit} moves of " \
-                         f"{motor.name} with {step} step size. Maximum value was {maxcurrent} at {maxpos}."\
-                         f"Check if {motor.name} is going the right direction, and if {detname} is on.")
+        raise ValueError(f"Detector {detname} did not exceed {threshold} after"
+                         f" {limit} moves of {motor.name} with {step} step "
+                         f"size. Maximum value was {maxcurrent} at {maxpos}."
+                         f"Check if {motor.name} is going the right direction,"
+                         f" and if {detname} is on.")
