@@ -105,7 +105,7 @@ def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None):
 
 def threshold_adaptive(dets, motor, threshold, step=2, limit=15):
     """
-    Attempt to get a detector over a threshold by moving a motor\
+    Attempt to get a detector over a threshold by moving a motor
     """
     detname = dets[0].name
     def ct():

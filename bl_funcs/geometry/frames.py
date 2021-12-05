@@ -1,5 +1,7 @@
 import numpy as np
 from .linalg import *
+from .linalg import (vec, constructBasis, changeBasisMatrix, rad_to_deg,
+                     deg_to_rad, rotz, rotzMat)
 from .polygons import *
 
 
@@ -28,8 +30,9 @@ class Axis:
     def global_to_frame(self, x_global, offset=0):
         x_frame = self._to_frame(x_global)
 
+
 class Frame:
-    def __init__(self, p1, p2, p3, parent=None):
+    def __init__(self, p1, p2, p3, parent=None, rot_meas_axis=2):
         """
         Parameters
         ------------
@@ -40,27 +43,51 @@ class Frame:
         p3 : vector
             defines the plane of the x basis vector
         parent : Frame, optional
+        rot_meas_axis : int
+            Which axis will be used to measure rotation relative to the
+            global coordinate system X-Y plane
         """
+        self.rot_meas_axis = rot_meas_axis
         self.reset(p1, p2, p3, parent=parent)
 
     def reset(self, p1, p2, p3, parent=None):
+        self.parent = parent
+        self.update_basis(p1, p2, p3)
+        self.update_rotation()
+
+    def update_basis(self, p1, p2, p3):
         self.vectors = [p1, p2, p3]
         self.p0 = p1
         self._basis = constructBasis(p1, p2, p3)
         # r_offset
         self.A = changeBasisMatrix(*self._basis)
         self.Ainv = self.A.T
-        self.parent = parent
+
+    def update_rotation(self):
         self.r0 = rad_to_deg(self._roffset())
-    
+
+    def add_parent_frame(self, parent):
+        """
+        Adds a new parent at the top of the parent
+        hierarchy, replacing the old global frame.
+        """
+        if self.parent is None:
+            self.parent = parent
+        else:
+            self.parent.add_parent_frame(parent)
+        self.update_rotation()
+
+    def reset_z(self, z, parent=None):
+        self.p0[2] = z
+
     def _roffset(self):
         """
         R offset relative to the GLOBAL frame (not the parent frame!)
 
         Important note! It is a BAKED IN ASSUMPTION that
         these frames are being used for beamline samples, and
-        that the z-axis is perpendicular to the sample surface.
-        "Rotation" means the angle that the sample z-axis makes
+        that there is only one rotation axis.
+        "Rotation" means the angle that the rotation axis makes
         with respect to the beam in the global x-y plane. This
         makes sense because we only have a 4-axis manipulator.
         If we had, god forbid, a 6-axis manipulator, none of this
@@ -71,7 +98,9 @@ class Frame:
         # we bootstrap the rotation by finding the z-vector in the global
         # frame, even if
         # we have a parent.
-        n3 = (self.frame_to_global(vec(0, 0, 1), rotation='global') -
+        axis = vec(0, 0, 0)
+        axis[self.rot_meas_axis] = 1
+        n3 = (self.frame_to_global(axis, rotation='global') -
               self.frame_to_global(vec(0, 0, 0), rotation='global'))
         x = n3[0]
         y = n3[1]
