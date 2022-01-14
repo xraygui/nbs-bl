@@ -1,6 +1,6 @@
 from databroker.core import SingleRunCache
 import bluesky.preprocessors as bpp
-from bluesky.plan_stubs import mv, mvr
+from bluesky.plan_stubs import mv, mvr, trigger_and_read
 from bluesky.plans import count
 import numpy as np
 
@@ -72,35 +72,32 @@ def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None):
     detname = dets[0].name
 
     def ct():
-        src = SingleRunCache()
+        ret = yield from trigger_and_read(dets)
+        return ret[detname]['value']
 
-        @bpp.subs_decorator(src.callback)
-        def inner_ct():
-            yield from count(dets)
-            run = src.retrieve()
-            table = run.primary.read()
-            return float(table[detname])
-        return (yield from inner_ct())
+    @bpp.stage_decorator(dets)
+    @bpp.run_decorator()
+    def halfmax_inner(step, maxct=None):
+        if maxct is None:
+            maxct = yield from ct()
+        current = maxct
+        while np.abs(step) > precision/2.0:
+            yield from mvr(motor, -1*step)
+            current = yield from ct()
+            while current > maxct/2.0:
+                yield from mvr(motor, step)
+                current = yield from ct()
+            step = step/2.0
+            if np.abs(step) > precision/2.0:
+                print(f"{detname} halfmax at {motor.name}:{motor.position}")
+                print(f"Value: {current}, Max: {maxct}, reducing step to {step}")
 
-    if maxct is None:
-        maxct = yield from ct()
-    current = maxct
-    while current > maxct/2.0:
-        yield from mvr(motor, step)
-        current = yield from ct()
-    if np.abs(step) > precision:
-        print(f"{detname} halfmax at {motor.name}:{motor.position}")
-        print(f"Value: {current}, Max: {maxct}, reducing step to {step/2.0}")
-        yield from mvr(motor, -1*step)
-        pos = yield from halfmax_adaptive(dets, motor, step=step/2.0,
-                                          precision=precision, maxct=maxct)
-    else:
         print(f"{detname} halfmax at {motor.name}:{motor.position}")
         print(f"Value: {current}, Max: {maxct}, "
               f"precision: {precision} reached")
-        pos = motor.position
-        yield from mv(motor, pos)
-    return pos
+        return motor.position
+
+    return (yield from halfmax_inner(step, maxct))
 
 
 def threshold_adaptive(dets, motor, threshold, step=2, limit=15):
@@ -108,34 +105,34 @@ def threshold_adaptive(dets, motor, threshold, step=2, limit=15):
     Attempt to get a detector over a threshold by moving a motor
     """
     detname = dets[0].name
+
     def ct():
-        src = SingleRunCache()
+        ret = yield from trigger_and_read(dets)
+        return ret[detname]['value']
 
-        @bpp.subs_decorator(src.callback)
-        def inner_ct():
-            yield from count(dets)
-            run = src.retrieve()
-            table = run.primary.read()
-            return float(table[detname])
-        return (yield from inner_ct())
+    @bpp.stage_decorator(dets)
+    @bpp.run_decorator()
+    def inner_threshold():
+        pos = motor.position
+        maxpos = pos
 
-    pos = motor.position
-    maxpos = pos
-    current = yield from ct()
-    n = 0
-    maxcurrent = current
-    while current < threshold and n < limit:
-        yield from mvr(motor, step)
+        n = 0
         current = yield from ct()
-        if current > maxcurrent:
-            maxcurrent = current
-            maxpos = motor.position
-        n += 1
-    if current > threshold:
-        return motor.position
-    else:
-        raise ValueError(f"Detector {detname} did not exceed {threshold} after"
-                         f" {limit} moves of {motor.name} with {step} step "
-                         f"size. Maximum value was {maxcurrent} at {maxpos}."
-                         f"Check if {motor.name} is going the right direction,"
-                         f" and if {detname} is on.")
+        maxcurrent = current
+
+        while current < threshold and n < limit:
+            yield from mvr(motor, step)
+            current = yield from ct()
+            if current > maxcurrent:
+                maxcurrent = current
+                maxpos = motor.position
+            n += 1
+        if current > threshold:
+            return motor.position
+        else:
+            raise ValueError(f"Detector {detname} did not exceed {threshold} after"
+                             f" {limit} moves of {motor.name} with {step} step "
+                             f"size. Maximum value was {maxcurrent} at {maxpos}."
+                             f"Check if {motor.name} is going the right direction,"
+                             f" and if {detname} is on.")
+    return (yield from inner_threshold())
