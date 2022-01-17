@@ -5,33 +5,125 @@ from .linalg import (vec, constructBasis, changeBasisMatrix, rad_to_deg,
 from .polygons import *
 
 
+class NullFrame:
+    def frame_to_beam(*args, **kwargs):
+        return args
+
+    def beam_to_frame(*args, **kwargs):
+        return args
+
+    def distance_to_beam(*args):
+        v = np.array(args)
+        return np.sqrt(np.dot(v, v))
+
+
 class Axis:
     def __init__(self, x0, scale=1, parent=None):
-        self.reset(x0, parent=parent)
+        self.reset(x0, scale, parent=parent)
 
     def reset(self, x0, scale, parent=None):
         self.x0 = x0
         self.scale = scale
         self.parent = parent
 
-    def _to_global(self, x):
+    def update_basis(self, x):
+        self.x0 = x
+
+    def frame_to_parent(self, x):
         return x*self.scale + self.x0
 
-    def _to_frame(self, x):
+    def parent_to_frame(self, x):
         return x*self.scale - self.x0
 
-    def frame_to_global(self, x_frame, offset=0):
-        x_global = self._to_global(x_frame)
-        if self.parent is not None:
-            return self.parent.frame_to_global(x_global, offset)
+    def add_parent_frame(self, parent):
+        """
+        Adds a new parent at the top of the parent
+        hierarchy, replacing the old global frame.
+        Maybe dangerous in practice...
+        """
+        if self.parent is None:
+            self.parent = parent
         else:
-            return x_global
+            self.parent.add_parent_frame(parent)
 
-    def global_to_frame(self, x_global, offset=0):
-        x_frame = self._to_frame(x_global)
+    def frame_to_global(self, x_frame):
+        x_parent = self.frame_to_parent(x_frame)
+        if self.parent is not None:
+            return self.parent.frame_to_global(x_parent)
+        else:
+            return x_parent
+
+    def global_to_frame(self, x_global):
+        if self.parent is None:
+            return self.parent_to_frame(x_global)
+        else:
+            x_parent = self.parent.global_to_frame(x_global)
+            return self.parent_to_frame(x_parent)
+
+    def frame_to_beam(self, x_frame):
+        return self.frame_to_global(x_frame)
+
+    def beam_to_frame(self, x_global):
+        return self.global_to_frame(x_global)
+
+    def distance_to_beam(self, x_beam_global):
+        """
+        Distance from beam to origin
+
+        Parameters
+        -----------
+        x_beam_global : float
+            beam position in global coordinate system
+        """
+        x = self.global_to_frame(x_beam_global)
+        return x
+
+
+class Interval(Axis):
+    def __init__(self, x0, length, *args, parent=None):
+        self.length = length
+        super().__init__(x0, *args, parent=parent)
+
+    def frame_to_global(self, x, origin="edge"):
+        if origin == "center":
+            x += self.length/2.0
+        return super().frame_to_global(x)
+
+    def global_to_frame(self, x, origin="edge"):
+        x = super().global_to_frame(x)
+        if origin == "center":
+            x -= self.length/2.0
+        return x
+
+    def frame_to_beam(self, x_frame, **kwargs):
+        return self.frame_to_global(x_frame, **kwargs)
+
+    def beam_to_frame(self, x_global, **kwargs):
+        return self.global_to_frame(x_global, **kwargs)
+
+    def distance_to_beam(self, x_beam_global):
+        x = self.global_to_frame(x_beam_global)
+        d1 = np.abs(x)
+        d2 = np.abs(x - self.length)
+        if (d1 < self.length) and (d2 < self.length):
+            return -1*min(d1, d2)
+        else:
+            return min(d1, d2)
+
+    def make_sample_frame(self, position, t=0):
+        x1, x2 = position
+        frame = Interval(x1, x2 - x1, parent=self)
+        return frame
 
 
 class Frame:
+    """
+    20220117: This entire thing is too complicated. Having a "manip" argument was a really bad
+    idea. I should have used a moveable manipulator frame instead. Indeed, this is what I have
+    essentially done, but the complexity remains. There are also too many X_to_frame and 
+    frame_to_X functions. There should have only been "parent_to_frame" and "global_to_frame".
+    No time to fix this now. Interval/Axis are done better
+    """
     def __init__(self, p1, p2, p3, parent=None, rot_meas_axis=2):
         """
         Parameters
@@ -190,7 +282,8 @@ class Frame:
     def frame_to_beam(self, fx, fy, fz, fr=0, **kwargs):
         """
         Given a frame coordinate, and rotation, find the manipulator position and rotation
-        that places the frame coordinate in the beam path
+        that places the frame coordinate in the beam path. The beam position
+        is assumed to be the origin of the global coordinate system.
 
         Returns
         --------
@@ -208,7 +301,8 @@ class Frame:
     def beam_to_frame(self, gx, gy, gz, gr=0, **kwargs):
         """
         Given a manipulator coordinate and rotation, find the beam intersection
-        position and incidence angle in the frame coordinates.
+        position and incidence angle in the frame coordinates. The beam position
+        is assumed to be the origin of the global coordinate system.
 
         Parameters
         ------------
@@ -381,6 +475,20 @@ class Panel(Frame):
             return -1*distance
         else:
             return distance
+
+    def make_sample_frame(self, position, t=0):
+        if len(position) == 4:
+            x1, y1, x2, y2 = position
+            p1 = vec(x1, y1, t)
+            p2 = vec(x1, y2, t)
+            p3 = vec(x2, y1, t)
+            width = x2 - x1
+            height = y2 - y1
+
+            frame = Panel(p1, p2, p3, height=height, width=width,
+                          parent=self)
+            return frame
+
 
 def make_geometry(*args, **kwargs):
     if len(args) == 3:

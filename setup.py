@@ -8,7 +8,7 @@ setup(
     author_email=None,
     description="Beamline utility functions",
     install_requires=requirements,
-    name="bl_funcs",
+    name="sst_funcs",
     use_scm_version=True,
     packages=find_packages()
 )

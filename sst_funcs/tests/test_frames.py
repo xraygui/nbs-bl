@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from bl_funcs.geometry.frames import Frame
-from bl_funcs.geometry.linalg import vec
+from ..geometry.frames import Frame
+from ..geometry.linalg import vec
 
 
 @pytest.fixture
