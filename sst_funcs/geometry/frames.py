@@ -1,18 +1,17 @@
 import numpy as np
-from .linalg import *
 from .linalg import (vec, constructBasis, changeBasisMatrix, rad_to_deg,
                      deg_to_rad, rotz, rotzMat)
-from .polygons import *
+from .polygons import isInPoly, getMinDist
 
 
 class NullFrame:
-    def frame_to_beam(*args, **kwargs):
+    def frame_to_beam(self, *args, **kwargs):
         return args
 
-    def beam_to_frame(*args, **kwargs):
+    def beam_to_frame(self, *args, **kwargs):
         return args
 
-    def distance_to_beam(*args):
+    def distance_to_beam(self, *args):
         v = np.array(args)
         return np.sqrt(np.dot(v, v))
 
@@ -118,11 +117,12 @@ class Interval(Axis):
 
 class Frame:
     """
-    20220117: This entire thing is too complicated. Having a "manip" argument was a really bad
-    idea. I should have used a moveable manipulator frame instead. Indeed, this is what I have
-    essentially done, but the complexity remains. There are also too many X_to_frame and 
-    frame_to_X functions. There should have only been "parent_to_frame" and "global_to_frame".
-    No time to fix this now. Interval/Axis are done better
+    20220117: This entire thing is too complicated. Having a "manip" argument
+    was a really bad idea. I should have used a moveable manipulator frame
+    instead. Indeed, this is what I have essentially done, but the complexity
+    remains. There are also too many X_to_frame and frame_to_X functions.
+    There should have only been "parent_to_frame" and "global_to_frame". No
+    time to fix this now. Interval/Axis are done better
     """
     def __init__(self, p1, p2, p3, parent=None, rot_meas_axis=2):
         """
@@ -281,9 +281,10 @@ class Frame:
 
     def frame_to_beam(self, fx, fy, fz, fr=0, **kwargs):
         """
-        Given a frame coordinate, and rotation, find the manipulator position and rotation
-        that places the frame coordinate in the beam path. The beam position
-        is assumed to be the origin of the global coordinate system.
+        Given a frame coordinate, and rotation, find the manipulator position
+        and rotation that places the frame coordinate in the beam path.
+        The beam position is assumed to be the origin of the global coordinate
+        system.
 
         Returns
         --------
@@ -301,8 +302,8 @@ class Frame:
     def beam_to_frame(self, gx, gy, gz, gr=0, **kwargs):
         """
         Given a manipulator coordinate and rotation, find the beam intersection
-        position and incidence angle in the frame coordinates. The beam position
-        is assumed to be the origin of the global coordinate system.
+        position and incidence angle in the frame coordinates. The beam
+        position is assumed to be the origin of the global coordinate system.
 
         Parameters
         ------------
