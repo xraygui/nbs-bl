@@ -196,23 +196,16 @@ class Frame:
               self.frame_to_global(vec(0, 0, 0), rotation='global'))
         x = n3[0]
         y = n3[1]
-        if y == 0:
-            return 0
-        elif x >= 0 and y >= 0:
-            quad = 1
-        elif x < 0 and y >= 0:
-            quad = 2
-        elif x <= 0 and y < 0:
-            quad = 3
+            
+        if x > 0 and y >= 0:
+            return np.arctan(np.abs(y/x))
+        elif x <= 0 and y > 0:
+            return np.arctan(np.abs(x/y)) + np.pi/2.0
+        elif x < 0 and y <= 0:
+            return np.arctan(np.abs(y/x)) + np.pi
         else:
-            quad = 4
-        theta = np.arctan(y/x)
-        if quad == 1:
-            return theta
-        elif quad == 2 or quad == 3:
-            return theta + np.pi
-        elif quad == 4:
-            return theta + 2*np.pi
+            return np.arctan(np.abs(x/y)) + np.pi*3/2.0
+
 
     def _to_global(self, v):
         return np.dot(self.A, v) + self.p0
@@ -222,12 +215,12 @@ class Frame:
 
     def _manip_to_global(self, v_manip, manip, r):
         theta = deg_to_rad(r)
-        v_global = rotz(theta, v_manip) + manip
+        v_global = rotz(-theta, v_manip) + manip
         return v_global
 
     def _global_to_manip(self, v_global, manip, r):
         theta = deg_to_rad(r)
-        v_manip = rotz(-theta, v_global - manip)
+        v_manip = rotz(theta, v_global - manip)
         return v_manip
 
     def frame_to_global(self, v_frame, manip=vec(0, 0, 0), r=0,
@@ -247,7 +240,7 @@ class Frame:
             (0 = grazing incidence, 90 = normal)
         """
         if rotation == 'frame':
-            rg = r - self.r0
+            rg = r + self.r0
         else:
             rg = r
         v_global = self._to_global(v_frame)
@@ -295,7 +288,7 @@ class Frame:
 
         v_frame = vec(fx, fy, fz)
         v_global = -1*self.frame_to_global(v_frame, r=fr)
-        gr = fr - self.r0
+        gr = fr + self.r0
         gx, gy, gz = (v_global[0], v_global[1], v_global[2])
         return gx, gy, gz, gr
 
@@ -324,7 +317,7 @@ class Frame:
         manip = vec(gx, gy, gz)
         v_frame = self.origin_to_frame(manip, gr)
         fx, fy, fz = (v_frame[0], v_frame[1], v_frame[2])
-        fr = gr + self.r0
+        fr = gr - self.r0
         return fx, fy, fz, fr
 
     def origin_to_frame(self, manip=vec(0, 0, 0), r=0):
