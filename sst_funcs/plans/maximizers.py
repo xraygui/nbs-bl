@@ -5,7 +5,7 @@ from bluesky.plans import count
 import numpy as np
 
 
-def find_max(plan, dets, *args, invert=False):
+def find_max(plan, dets, *args, max_channel=None, invert=False):
     """
     invert turns find_max into find_min
     """
@@ -18,7 +18,10 @@ def find_max(plan, dets, *args, invert=False):
         table = run.primary.read()
         motor_names = run.metadata['start']['motors']
         motors = [m for m in args if getattr(m, 'name', None) in motor_names]
-        detname = dets[0].name
+        if max_channel is None:
+            detname = dets[0].name
+        else:
+            detname = max_channel
         if invert:
             max_idx = int(table[detname].argmin())
             print(f"Minimum found at step {max_idx} for detector {detname}")
@@ -39,7 +42,7 @@ def find_min(plan, dets, *args):
     return (yield from find_max(plan, dets, *args, invert=True))
 
 
-def find_max_deriv(plan, dets, *args):
+def find_max_deriv(plan, dets, *args, max_channel=None):
     src = SingleRunCache()
 
     @bpp.subs_decorator(src.callback)
@@ -53,7 +56,10 @@ def find_max_deriv(plan, dets, *args):
             print("Derivative with multiple motors unsupported, \
             taking first motor")
 
-        detname = dets[0].name
+        if max_channel is None:
+            detname = dets[0].name
+        else:
+            detname = max_channel
         motname = motors[0].name
         max_idx = np.argmax(np.abs(np.gradient(table[detname],
                                                table[motname])))
@@ -68,8 +74,11 @@ def find_max_deriv(plan, dets, *args):
     return (yield from inner_maximizer())
 
 
-def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None):
-    detname = dets[0].name
+def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None, max_channel=None):
+    if max_channel is None:
+        detname = dets[0].name
+    else:
+        detname = max_channel
 
     def ct():
         ret = yield from trigger_and_read(dets)
@@ -100,11 +109,15 @@ def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None):
     return (yield from halfmax_inner(step, maxct))
 
 
-def threshold_adaptive(dets, motor, threshold, step=2, limit=15):
+def threshold_adaptive(dets, motor, threshold, step=2, limit=15, max_channel=None):
     """
     Attempt to get a detector over a threshold by moving a motor
     """
-    detname = dets[0].name
+
+    if max_channel is None:
+        detname = dets[0].name
+    else:
+        detname = max_channel
 
     def ct():
         ret = yield from trigger_and_read(dets)
