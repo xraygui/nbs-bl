@@ -98,12 +98,36 @@ def rotzMat(theta):
                      [0, 0, 1]])
 
 
+def rotyMat(theta):
+    return np.array([[np.cos(theta), 0, np.sin(theta)],
+                     [0, 1, 0],
+                     [-np.sin(theta), 0,  np.cos(theta)]
+                     ])
+
+
+def rotxMat(theta):
+    return np.array([[1, 0, 0],
+                     [0, np.cos(theta), -np.sin(theta)],
+                     [0, np.sin(theta), np.cos(theta)]
+                     ])
+
+
 def rotz(theta, v):
     """
     Rotate a vector by theta around the z axis
     """
     rz = rotzMat(theta)
     return np.dot(rz, v)
+
+
+def roty(theta, v):
+    ry = rotyMat(theta)
+    return np.dot(ry, v)
+
+
+def rotx(theta, v):
+    rx = rotxMat(theta)
+    return np.dot(rx, v)
 
 
 def deg_to_rad(d):

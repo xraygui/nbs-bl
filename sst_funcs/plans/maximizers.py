@@ -1,5 +1,6 @@
 from databroker.core import SingleRunCache
 import bluesky.preprocessors as bpp
+from .preprocessors import run_return_decorator
 from bluesky.plan_stubs import mv, mvr, trigger_and_read
 from bluesky.plans import count
 import numpy as np
@@ -85,7 +86,7 @@ def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None, max_channel=N
         return ret[detname]['value']
 
     @bpp.stage_decorator(dets)
-    @bpp.run_decorator()
+    @run_return_decorator()
     def halfmax_inner(step, maxct=None):
         if maxct is None:
             maxct = yield from ct()
@@ -124,7 +125,7 @@ def threshold_adaptive(dets, motor, threshold, step=2, limit=15, max_channel=Non
         return ret[detname]['value']
 
     @bpp.stage_decorator(dets)
-    @bpp.run_decorator()
+    @run_return_decorator()
     def inner_threshold():
         pos = motor.position
         maxpos = pos
