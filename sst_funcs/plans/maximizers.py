@@ -75,6 +75,41 @@ def find_max_deriv(plan, dets, *args, max_channel=None):
     return (yield from inner_maximizer())
 
 
+def find_halfmax(plan, dets, *args, max_channel=None):
+    """
+    For a plan and detector that goes from low to high, find
+    the motor value where the detector is half of the maximum
+    value
+    """
+    src = SingleRunCache()
+
+    @bpp.subs_decorator(src.callback)
+    def inner_maximizer():
+        yield from plan(dets, *args)
+        run = src.retrieve()
+        table = run.primary.read()
+        motor_names = run.metadata['start']['motors']
+        motors = [m for m in args if getattr(m, 'name', None) in motor_names]
+        if max_channel is None:
+            detname = dets[0].name
+        else:
+            detname = max_channel
+        max_val = float(table[detname].max())
+        halftable = table[detname] - max_val/2.0
+        half_idx = 0
+        for n, v in enumerate(halftable.data):
+            if v > 0:
+                half_idx = n
+                break
+        ret = []
+        for m in motors:
+            mot_val = float(table[m.name][half_idx])
+            print(f"setting {m.name} to {mot_val}")
+            ret.append([m, mot_val])
+            yield from mv(m, mot_val)
+        return ret
+    return (yield from inner_maximizer())
+            
 def halfmax_adaptive(dets, motor, step=5, precision=1, maxct=None, max_channel=None):
     if max_channel is None:
         detname = dets[0].name
@@ -132,8 +167,28 @@ def threshold_adaptive(dets, motor, threshold, step=2, limit=15, max_channel=Non
 
         n = 0
         current = yield from ct()
-        maxcurrent = current
 
+        if current > threshold:
+            mincurrent = current
+            print(f"Starting above threshold of {detname}, try to get below {threshold} by moving {motor.name} with starting position {pos} and step -{step}")
+            while current > threshold and n < limit:
+                yield from mvr(motor, -1*step)
+                current = yield from ct()
+                if current < mincurrent:
+                    mincurrent = current
+                    minpos = motor.position
+                n += 1
+            if current < threshold:
+                pass
+            else:
+                raise ValueError(f"Detector {detname} did not fall below {threshold} after"
+                                 f" {limit} moves of {motor.name} with -{step} step "
+                                 f"size. Minimum value was {mincurrent} at {minpos}."
+                                 f"Check if {motor.name} is going the right direction,"
+                                 f" and if {detname} is on.")
+
+        print(f"Searching for threshold value {threshold} of {detname} for {motor.name} with starting position {pos} and step {step}")
+        maxcurrent = current
         while current < threshold and n < limit:
             yield from mvr(motor, step)
             current = yield from ct()
@@ -149,4 +204,5 @@ def threshold_adaptive(dets, motor, threshold, step=2, limit=15, max_channel=Non
                              f"size. Maximum value was {maxcurrent} at {maxpos}."
                              f"Check if {motor.name} is going the right direction,"
                              f" and if {detname} is on.")
+                
     return (yield from inner_threshold())

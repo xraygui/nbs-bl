@@ -10,7 +10,7 @@ def vec(*args):
     """
     Construct a vector from components
     """
-    return np.array(args)
+    return np.array(args, dtype="float64")
 
 
 def normVector(v):
