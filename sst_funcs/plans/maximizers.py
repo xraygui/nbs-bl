@@ -1,4 +1,4 @@
-from databroker.core import SingleRunCache
+from bluesky_live.bluesky_run import BlueskyRun, DocumentCache
 import bluesky.preprocessors as bpp
 from .preprocessors import run_return_decorator
 from bluesky.plan_stubs import mv, mvr, trigger_and_read
@@ -10,12 +10,12 @@ def find_max(plan, dets, *args, max_channel=None, invert=False):
     """
     invert turns find_max into find_min
     """
-    src = SingleRunCache()
+    dc = DocumentCache()
 
-    @bpp.subs_decorator(src.callback)
+    @bpp.subs_decorator(dc)
     def inner_maximizer():
         yield from plan(dets, *args)
-        run = src.retrieve()
+        run = BlueskyRun(dc)
         table = run.primary.read()
         motor_names = run.metadata['start']['motors']
         motors = [m for m in args if getattr(m, 'name', None) in motor_names]
@@ -44,12 +44,12 @@ def find_min(plan, dets, *args):
 
 
 def find_max_deriv(plan, dets, *args, max_channel=None):
-    src = SingleRunCache()
+    dc = DocumentCache()
 
-    @bpp.subs_decorator(src.callback)
+    @bpp.subs_decorator(dc)
     def inner_maximizer():
         yield from plan(dets, *args)
-        run = src.retrieve()
+        run = BlueskyRun(dc)
         table = run.primary.read()
         motor_names = run.metadata['start']['motors']
         motors = [m for m in args if getattr(m, 'name', None) in motor_names]
@@ -81,12 +81,12 @@ def find_halfmax(plan, dets, *args, max_channel=None):
     the motor value where the detector is half of the maximum
     value
     """
-    src = SingleRunCache()
+    dc = DocumentCache()
 
-    @bpp.subs_decorator(src.callback)
+    @bpp.subs_decorator(dc)
     def inner_maximizer():
         yield from plan(dets, *args)
-        run = src.retrieve()
+        run = BlueskyRun(dc)
         table = run.primary.read()
         motor_names = run.metadata['start']['motors']
         motors = [m for m in args if getattr(m, 'name', None) in motor_names]
