@@ -4,6 +4,7 @@ from bluesky.preprocessors import contingency_wrapper
 from functools import wraps
 from copy import deepcopy
 import inspect
+import uuid
 
 
 def sanitize(arg):
@@ -43,7 +44,9 @@ def plan_md_decorator(plan_function):
             del arguments['md']
 
         _md['plan_history'] = []
-        _md['master_plan'] = plan_name
+        if plan_level == 0:
+            _md['master_plan'] = plan_name
+            _md['batch_uid'] = str(uuid.uuid4())
         _md.update(deepcopy(md))
         _md['plan_history'].append({"plan_name": plan_name,
                                     "arguments": arguments,
