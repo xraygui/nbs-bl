@@ -34,6 +34,12 @@ def read_input(message, default, timeout, secs):
     else:
         return timeout
 
+def run_report(thisfile):
+    """
+    Noisily proclaim to be importing a file of python code.
+    """
+    print(colored("Importing %s ..." % thisfile.split("/")[-1], "lightcyan"))
+
 
 def boxed_text(title, text, tint, width=75, shrink=False):
     """
