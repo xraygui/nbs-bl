@@ -47,10 +47,13 @@ def boxed_text(title, text, tint, width=75, shrink=False):
     of the box will contain a title.  The box elements will
     be coloreded.
     """
-
+    if type(text) is str:
+        textlines = text.splitlines()
+    else:
+        textlines = text
     if shrink:
         width = min(width, max((ansiwrap.ansilen(line) for
-                                line in text.split("\n"))))
+                                line in textlines)))
 
     remainder = width - 5 - len(title)
     ul = u"\u250C"  # u'\u2554'
@@ -62,7 +65,7 @@ def boxed_text(title, text, tint, width=75, shrink=False):
     print("")
     print(colored("".join([ul, bar * 3, " ", title, " ", bar * remainder, ur]),
                   tint))
-    for line1 in text.splitlines():
+    for line1 in textlines:
         lines = ansiwrap.fill(line1, width, subsequent_indent=" " * 26)
         for line in lines.splitlines():
             line = line.rstrip()

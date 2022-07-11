@@ -170,6 +170,7 @@ def threshold_adaptive(dets, motor, threshold, step=2, limit=15, max_channel=Non
 
         if current > threshold:
             mincurrent = current
+            minpos = motor.position
             print(f"Starting above threshold of {detname}, try to get below {threshold} by moving {motor.name} with starting position {pos} and step -{step}")
             while current > threshold and n < limit:
                 yield from mvr(motor, -1*step)
