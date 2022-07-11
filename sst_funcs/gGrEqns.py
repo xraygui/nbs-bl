@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.optimize as opt
+import bluesky.plan_stubs as bps
 from .printing import run_report
 
 run_report(__file__)
@@ -129,6 +130,11 @@ def diffraction_pitch_offset_error_func(
         en_theoretical = energy(mir,grat, k_invmm, m)  # what energy these test positions would produce
         error += (en_theoretical - en_eV) ** 2
     return error
+
+
+def set_pgm_offsets(error_object, energy_object):
+    yield from bps.mvr(energy_object.monoen.mirror2.user_offset,-error_object.x[0]) # right now we have to set the negative of the fit value as the delta in the offset
+    yield from bps.mvr(energy_object.monoen.grating.user_offset,-error_object.x[1])
 
 
 def test_grating_fit(numpoints, minc, maxc, minm, maxm, energy, k, noise, moffset, goffset):
