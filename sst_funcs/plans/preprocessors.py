@@ -55,6 +55,19 @@ def plan_md_decorator(plan_function):
     return _inner
 
 
+def wrap_metadata(param):
+    def decorator(func):
+        @wraps(func)
+        def inner(*args, md=None, **kwargs):
+            md = md or {}
+            _md = {}
+            _md.update(param)
+            _md.update(md)
+            return func(*args, md=_md, **kwargs)
+        return inner
+    return decorator
+
+
 def run_return_wrapper(plan, *, md=None):
     """Enclose in 'open_run' and 'close_run' messages.
 
