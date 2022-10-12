@@ -24,7 +24,7 @@ def group(groupname):
     def decorator(func):
         @wraps(func)
         def inner(*args, **kwargs):
-            md = {"group": {"uid": str(uuid.uuid4()), "name": groupname}}
+            md = {"group_md": {"uid": str(uuid.uuid4()), "name": groupname}}
             return (yield from inject_md_wrapper(func(*args, **kwargs), md))
         return inner
     return decorator
