@@ -130,6 +130,8 @@ def diffraction_pitch_offset_error_func(
         en_theoretical = energy(mir,grat, k_invmm, m)  # what energy these test positions would produce
         error += (en_theoretical - en_eV) ** 2
     return error
+# for the RSoXS grating:
+# RE(tune_pgm(cs=[1.35,1.4,1.45,1.5,1.55],ms=[1,1,1,1,1],energy=291.65,pol=90,k=250))
 
 
 def set_pgm_offsets(error_object, energy_object):
