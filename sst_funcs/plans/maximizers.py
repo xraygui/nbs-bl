@@ -207,3 +207,4 @@ def threshold_adaptive(dets, motor, threshold, step=2, limit=15, max_channel=Non
                              f" and if {detname} is on.")
                 
     return (yield from inner_threshold())
+
