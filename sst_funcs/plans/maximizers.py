@@ -6,7 +6,7 @@ from bluesky.plans import count
 import numpy as np
 
 
-def find_max(plan, dets, *args, max_channel=None, invert=False):
+def find_max(plan, dets, *args, max_channel=None, invert=False, **kwargs):
     """
     invert turns find_max into find_min
     """
@@ -14,7 +14,7 @@ def find_max(plan, dets, *args, max_channel=None, invert=False):
 
     @bpp.subs_decorator(dc)
     def inner_maximizer():
-        yield from plan(dets, *args)
+        yield from plan(dets, *args, **kwargs)
         run = BlueskyRun(dc)
         table = run.primary.read()
         motor_names = run.metadata['start']['motors']
@@ -75,7 +75,7 @@ def find_max_deriv(plan, dets, *args, max_channel=None):
     return (yield from inner_maximizer())
 
 
-def find_halfmax(plan, dets, *args, max_channel=None):
+def find_halfmax(plan, dets, *args, max_channel=None, **kwargs):
     """
     For a plan and detector that goes from low to high, find
     the motor value where the detector is half of the maximum
@@ -85,7 +85,7 @@ def find_halfmax(plan, dets, *args, max_channel=None):
 
     @bpp.subs_decorator(dc)
     def inner_maximizer():
-        yield from plan(dets, *args)
+        yield from plan(dets, *args, **kwargs)
         run = BlueskyRun(dc)
         table = run.primary.read()
         motor_names = run.metadata['start']['motors']
