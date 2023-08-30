@@ -1,46 +1,72 @@
-from sst_funcs.printing import boxed_text
+import yaml
+from copy import deepcopy
+from importlib import import_module
+from os.path import join, dirname
 
-GLOBAL_HELP_DICTIONARY = {'functions': {}, 'plans': {}, 'scans': {}}
-
-
-def add_to_func_list(f):
-    """
-    A function decorator that will add the function to the built-in list
-    """
-    key = f.__name__
-    doc = f.__doc__
-    GLOBAL_HELP_DICTIONARY['functions'][key] = doc
-    return f
+GLOBAL_CONF_DB = {}
 
 
-def add_to_plan_list(f):
-    """
-    A function decorator that will add the plan to the built-in list
-    """
-    key = f.__name__
-    doc = f.__doc__
-    GLOBAL_HELP_DICTIONARY['plans'][key] = doc
-    return f
+# configfile = join(dirname(__file__), "config.yaml")
+# configdb = loadConfigDB(configfile)
+def loadConfigDB(filename):
+    global GLOBAL_CONF_DB
+    with open(filename) as f:
+        db = yaml.safe_load(f)
+    GLOBAL_CONF_DB = db
+    return db
 
 
-def add_to_scan_list(f):
-    """
-    A function decorator that will add the plan to the built-in list
-    """
-    key = f.__name__
-    doc = f.__doc__
-    GLOBAL_HELP_DICTIONARY['scans'][key] = doc
-    return f
+def getConfigDB():
+    return GLOBAL_CONF_DB
 
 
-@add_to_func_list
-def print_builtins(sections=None):
-    """Prints a list of built-in functions for ucal"""
+def simpleResolver(fullclassname):
+    class_name = fullclassname.split(".")[-1]
+    module_name = ".".join(fullclassname.split(".")[:-1])
+    module = import_module(module_name)
+    cls = getattr(module, class_name)
+    return cls
 
-    if sections is None:
-        sections = sorted(GLOBAL_HELP_DICTIONARY.keys())
-    if type(sections) is str:
-        sections = [sections]
-    for key in sections:
-        section = f"{key.capitalize()}"
-        boxed_text(section, sorted(GLOBAL_HELP_DICTIONARY[key].keys()), "white")
+
+def getObjConfig(name):
+    confdb = getConfigDB()
+    for objdb in confdb.values():
+        if name in objdb:
+            objconf = deepcopy(objdb.get("_default", {}))
+            objconf.update(objdb[name])
+            return objconf
+    return None
+
+
+def getGroupConfig(group_name):
+    objdb = getConfigDB()[group_name]
+    devicedb = {}
+    for name in objdb:
+        if name == '_default':
+            continue
+        objconf = deepcopy(objdb.get("_default", {}))
+        objconf.update(objdb[name])
+        devicedb[name] = objconf
+    return devicedb
+
+
+def findAndLoadComponent(name, cls=None):
+    device_info = getObjConfig(name)
+    return loadComponent(device_info, cls)
+
+
+def loadComponent(device_info, cls=None):
+    if cls is not None:
+        device_info.pop("_target_")
+        prefix = device_info.pop("prefix", "")
+        return cls(prefix, **device_info)
+    elif device_info['_target_'] is not None:
+        cls = simpleResolver(device_info.pop('_target_'))
+        prefix = device_info.pop('prefix', '')
+        return cls(prefix, **device_info)
+
+
+def loadGroup(group_name, namedict, cls=None):
+    group_config = getGroupConfig(group_name)
+    for device_name, device_info in group_config.items():
+        namedict[device_name] = loadComponent(device_info)
