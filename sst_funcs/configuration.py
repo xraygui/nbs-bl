@@ -50,12 +50,12 @@ def getGroupConfig(group_name):
     return devicedb
 
 
-def findAndLoadComponent(name, cls=None):
+def findAndLoadDevice(name, cls=None):
     device_info = getObjConfig(name)
-    return loadComponent(device_info, cls)
+    return instantiateDevice(device_info, cls)
 
 
-def loadComponent(device_info, cls=None):
+def instantiateDevice(device_info, cls=None):
     if cls is not None:
         device_info.pop("_target_")
         prefix = device_info.pop("prefix", "")
@@ -66,7 +66,7 @@ def loadComponent(device_info, cls=None):
         return cls(prefix, **device_info)
 
 
-def loadGroup(group_name, namedict, cls=None):
+def instantiateGroup(group_name, namedict, cls=None):
     group_config = getGroupConfig(group_name)
     for device_name, device_info in group_config.items():
-        namedict[device_name] = loadComponent(device_info)
+        namedict[device_name] = instantiateDevice(device_info)
