@@ -1,13 +1,15 @@
 from ophyd import Device
 from .help import add_to_func_list
 from .printing import boxed_text
-from .globals import (GLOBAL_ACTIVE_DETECTORS,
-                      GLOBAL_DETECTORS,
-                      GLOBAL_DETECTOR_DESCRIPTIONS,
-                      GLOBAL_PLOT_DETECTORS)
+from .globalVars import (GLOBAL_ACTIVE_DETECTORS,
+                         GLOBAL_DETECTORS,
+                         GLOBAL_DETECTOR_DESCRIPTIONS,
+                         GLOBAL_PLOT_DETECTORS,
+                         GLOBAL_DETECTOR_SETS,
+                         GLOBAL_DETECTOR_THRESHOLDS)
 
 
-def add_detector(det, description="", name=None, activate=True, plot=False):
+def add_detector(det, description="", name=None, activate=True, sets=None, threshold=None, **kwargs):
     """Add a detector to the global detector buffer
 
     with an optional description, and an optional name to substitute
@@ -34,7 +36,12 @@ def add_detector(det, description="", name=None, activate=True, plot=False):
     GLOBAL_DETECTORS[name] = det
     GLOBAL_DETECTOR_DESCRIPTIONS[name] = description
     if activate:
-        activate_detector(name, plot=plot)
+        activate_detector(name)
+    if sets is not None:
+        for set_name, role in sets.items():
+            add_detector_to_set(det, role, set_name)
+    if threshold is not None:
+        GLOBAL_DETECTOR_THRESHOLDS[name] = threshold
     return name
 
 
@@ -55,11 +62,13 @@ def list_detectors(describe=False):
             status = "active"
         else:
             status = "inactive"
-        if det in GLOBAL_PLOT_DETECTORS:
+        """
+        if role, det in GLOBAL_PLOT_DETECTORS:
             plotted = "plotted"
         else:
             plotted = "not plotted"
-        text.append(f"{name}: {status}, {plotted}")
+        """
+        text.append(f"{name}: {status}")
         if describe:
             text.append(f"    {GLOBAL_DETECTOR_DESCRIPTIONS[name]}")
     boxed_text(title, text, "white")
@@ -97,7 +106,7 @@ def get_detector(det_or_name):
 
 
 @add_to_func_list
-def activate_detector(det_or_name, plot=False):
+def activate_detector(det_or_name, role=None):
     """Activate a detector so that is is measured by default
 
     Parameters
@@ -111,8 +120,8 @@ def activate_detector(det_or_name, plot=False):
     detector = get_detector(det_or_name)
     if detector not in GLOBAL_ACTIVE_DETECTORS:
         GLOBAL_ACTIVE_DETECTORS.append(detector)
-    if plot:
-        plot_detector(detector)
+    if role is not None:
+        plot_detector(detector, role)
 
 
 @add_to_func_list
@@ -135,18 +144,35 @@ def deactivate_detector(det_or_name):
 
 
 @add_to_func_list
-def plot_detector(det_or_name):
-    detector = get_detector(det_or_name)
-    if detector not in GLOBAL_PLOT_DETECTORS:
-        GLOBAL_PLOT_DETECTORS.append(detector)
+def plot_detector(det_or_name, role):
+    """Add a detector to a specified plot role
 
+    Parameters
+    ----------
+    det_or_name: device or string
+        Either a device, or the name of a device in the global
+        detector buffer
+    roles : string
+        "primary", "normalization", "reference" or "auxiliary"
+    """
+    detector = get_detector(det_or_name)
+    unplot_detector(detector)
+    GLOBAL_PLOT_DETECTORS[role].append(detector)
 
 @add_to_func_list
 def unplot_detector(det_or_name):
+    """
+    Parameters
+    ----------
+    det_or_name: device or string
+        Either a device, or the name of a device in the global
+        detector buffer
+    """
     detector = get_detector(det_or_name)
-    if detector in GLOBAL_PLOT_DETECTORS:
-        idx = GLOBAL_PLOT_DETECTORS.index(detector)
-        GLOBAL_PLOT_DETECTORS.pop(idx)
+    for role_list in GLOBAL_PLOT_DETECTORS.values():
+        if detector in role_list:
+            idx = role_list.index(detector)
+            role_list.pop(idx)
 
 
 def remove_detector(det_or_name):
@@ -181,3 +207,40 @@ def remove_detector(det_or_name):
 
     del GLOBAL_DETECTORS[name]
     del GLOBAL_DETECTOR_DESCRIPTIONS[name]
+
+
+def add_detector_set(name, primary, auxiliary, normalization, reference):
+    det_set = {}
+    det_set['primary'] = [get_detector(det_or_name) for det_or_name in primary]
+    det_set['auxiliary'] = [get_detector(det_or_name) for det_or_name in auxiliary]
+    det_set['normalization'] = [get_detector(det_or_name) for det_or_name in normalization]
+    det_set['reference'] = [get_detector(det_or_name) for det_or_name in reference]
+    GLOBAL_DETECTOR_SETS[name] = det_set
+
+
+def add_detector_to_set(det_or_name, role, set_name):
+    detector = get_detector(det_or_name)
+    if set_name not in GLOBAL_DETECTOR_SETS:
+        GLOBAL_DETECTOR_SETS[set_name] = {}
+    if role not in GLOBAL_DETECTOR_SETS[set_name]:
+        GLOBAL_DETECTOR_SETS[set_name][role] = []
+    GLOBAL_DETECTOR_SETS[set_name][role].append(detector)
+
+
+def save_current_detectors_as_set(name):
+    GLOBAL_DETECTOR_SETS[name] = {}
+    GLOBAL_DETECTOR_SETS[name].update(GLOBAL_PLOT_DETECTORS)
+
+
+@add_to_func_list
+def plot_detector_set(name):
+    GLOBAL_PLOT_DETECTORS.clear()
+    GLOBAL_PLOT_DETECTORS.update(GLOBAL_DETECTOR_SETS[name])
+
+
+@add_to_func_list
+def list_detector_sets():
+    for set_name in GLOBAL_DETECTOR_SETS.keys():
+        print(f"{set_name}")
+        for role in GLOBAL_DETECTOR_SETS[set_name]:
+            print(f"{role}: {[det.name for det in GLOBAL_DETECTOR_SETS[set_name][role]]}")

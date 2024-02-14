@@ -2,9 +2,22 @@ import yaml
 from copy import deepcopy
 from importlib import import_module
 from os.path import join, dirname
+from .detectors import add_detector
+from .motors import add_motor
+from .shutters import add_shutter
+from .mirrors import add_mirror
+from .gatevalves import add_valve
+from .manipulators import add_manipulator
 
 GLOBAL_CONF_DB = {}
 
+_group_load_map = {}
+_group_load_map['detectors'] = add_detector
+_group_load_map['motors'] = add_motor
+_group_load_map['shutters'] = add_shutter
+_group_load_map['mirrors'] = add_mirror
+_group_load_map['gatevalves'] = add_valve
+#_group_load_map['manipulators'] = add_manipulator
 
 # configfile = join(dirname(__file__), "config.yaml")
 # configdb = loadConfigDB(configfile)
@@ -60,7 +73,8 @@ def findAndLoadDevice(name, cls=None, filename=None):
     return instantiateDevice(device_info, cls)
 
 
-def instantiateDevice(device_info, cls=None):
+"""
+def instantiateDevice(device_info, cls=None, namespace=None):
     if cls is not None:
         device_info.pop("_target_")
         prefix = device_info.pop("prefix", "")
@@ -71,12 +85,46 @@ def instantiateDevice(device_info, cls=None):
         return cls(prefix, **device_info)
     else:
         raise KeyError("Could not find '_target_' in {}".format(device_info))
+"""
 
 
-def instantiateGroup(group_name, namedict=None, cls=None, filename=None):
+def instantiateDevice(device_key, device_info, cls=None,
+                      namespace=None, add_to_global=None):
+    if cls is not None:
+        device_info.pop("_target_", None)
+    elif device_info.get('_target_', None) is not None:
+        cls = simpleResolver(device_info.pop('_target_'))
+    else:
+        raise KeyError("Could not find '_target_' in {}".format(device_info))
+
+    prefix = device_info.pop("prefix", "")
+    add_to_namespace = device_info.pop("_add_to_ns_", True)
+    extra_info = device_info.pop("_extra_", {})
+    device = cls(prefix, **device_info)
+
+    if add_to_namespace and namespace is not None:
+        namespace[device_key] = device
+    if add_to_global is not None:
+        f"Adding {device_key} to {add_to_global}"
+        add_to_global(device, name=device_key, **extra_info)
+    return device
+
+
+def instantiateGroup(group_name, namespace=None, cls=None, filename=None):
     group_config = getGroupConfig(group_name, filename=filename)
-    if namedict is None:
-        namedict = {}
-    for device_name, device_info in group_config.items():
-        namedict[device_name] = instantiateDevice(device_info)
-    return namedict
+    add_to_global = _group_load_map.get(group_name, None)
+    group_dict = {}
+    for device_key, device_info in group_config.items():
+        dev = instantiateDevice(device_key, device_info, cls,
+                                namespace, add_to_global)
+        group_dict[device_key] = dev
+    return group_dict
+
+
+def loadDeviceConfig(filename, namespace=None):
+    db = loadConfigDB(filename)
+    device_dict = {}
+    for group in db:
+        group_dict = instantiateGroup(group, namespace)
+        device_dict.update(group_dict)
+    return device_dict

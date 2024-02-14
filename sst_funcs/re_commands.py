@@ -14,3 +14,7 @@ async def call_obj(msg):
     command = kwargs.pop('method')
     ret = getattr(obj, command)(*args, **kwargs)
     return ret
+
+
+def load_RE_commands(engine):
+    engine.register_command("call_obj", call_obj)
