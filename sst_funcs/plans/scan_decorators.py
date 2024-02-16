@@ -36,7 +36,7 @@ def _sst_add_plot_md(func):
             for det in detlist:
                 if det in GLOBAL_ACTIVE_DETECTORS:
                     if hasattr(det, "get_plot_hints"):
-                        plot_hints[role].append(det.get_plot_hints())
+                        plot_hints[role] += det.get_plot_hints()
                     else:
                         plot_hints[role].append(det.name)
         _md = {'plot_hints': plot_hints}
