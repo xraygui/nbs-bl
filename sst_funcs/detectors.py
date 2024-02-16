@@ -41,7 +41,7 @@ def add_detector(det, description="", name=None, activate=True, sets=None, thres
         for set_name, role in sets.items():
             add_detector_to_set(det, role, set_name)
     if threshold is not None:
-        GLOBAL_DETECTOR_THRESHOLDS[name] = threshold
+        GLOBAL_DETECTOR_THRESHOLDS[det.name] = threshold
     return name
 
 
