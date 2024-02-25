@@ -2,7 +2,7 @@ from os.path import join, exists
 from .configuration import loadDeviceConfig
 
 ip = get_ipython()
-startup_dir = join(f"{ip.ipython_dir}", f"profile_{ip.profile}", "startup")
+startup_dir = ip.profile_dir.startup_dir
 config_file = join(startup_dir, "device_config.yaml")
 if exists(config_file):
     print(f"Attempting to load objects in {config_file}")
