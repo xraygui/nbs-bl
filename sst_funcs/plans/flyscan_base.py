@@ -62,7 +62,7 @@ def flystream_during_wrapper(plan, flyers, stream=True):
     plan2 = plan_mutator(plan1, insert_before_close)
     return (yield from plan2)
 
-def fly_scan(detectors, motor, *args, md=None, period=None):
+def fly_scan(detectors, motor, *args, md=None, period=None, stream=True):
     """
     Flyscan one motor in a trajectory
 
@@ -77,9 +77,9 @@ def fly_scan(detectors, motor, *args, md=None, period=None):
         where speed is optional
         In general:
         .. code-block:: python
-        
+
             start1, stop1, speed1[, start2, stop2, speed2, ...]
-    
+
     md : dict, optional
         metadata
     """
@@ -118,7 +118,7 @@ def fly_scan(detectors, motor, *args, md=None, period=None):
                 warn(repr(ex), RuntimeWarning)
 
     yield from call_obj(motor, 'preflight', *args)
-    
+
 
     @bpp.stage_decorator(readers)
     @bpp.run_decorator(md=_md)
@@ -130,4 +130,4 @@ def fly_scan(detectors, motor, *args, md=None, period=None):
 
         yield from call_obj(motor, 'land')
 
-    return (yield from flystream_during_wrapper(inner_flyscan(), flyers))
+    return (yield from flystream_during_wrapper(inner_flyscan(), flyers, stream=stream))

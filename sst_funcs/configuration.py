@@ -70,7 +70,7 @@ def getGroupConfig(group_name, filename=None):
 
 def findAndLoadDevice(name, cls=None, filename=None):
     device_info = getObjConfig(name, filename=filename)
-    return instantiateDevice(device_info, cls)
+    return instantiateDevice(name, device_info, cls)
 
 
 """

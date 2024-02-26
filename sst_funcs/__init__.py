@@ -1,7 +1,8 @@
+"""
+Why do I have anything at all in __init__?
 from importlib.metadata import version, PackageNotFoundError
 from os.path import join, exists
 from .configuration import loadDeviceConfig
-from . import hw
 
 try:
     __version__ = version("sst_funcs")
@@ -10,5 +11,5 @@ except PackageNotFoundError:
     pass
 
 
-
+"""
 # ip.user_ns['RE'] = RE
