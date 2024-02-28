@@ -30,9 +30,11 @@ def loadConfigDB(filename, saveGlobal=True):
     return db
 
 
-def getConfigDB(filename=None):
-    if filename is not None:
-        db = loadConfigDB(filename, saveGlobal=False)
+def getConfigDB(config=None):
+    if isinstance(config, dict):
+        db = config
+    elif config is not None:
+        db = loadConfigDB(config, saveGlobal=False)
     else:
         db = GLOBAL_CONF_DB
     return db
@@ -46,8 +48,8 @@ def simpleResolver(fullclassname):
     return cls
 
 
-def getObjConfig(name, filename=None):
-    confdb = getConfigDB(filename)
+def getObjConfig(name, config=None):
+    confdb = getConfigDB(config)
     for objdb in confdb.values():
         if name in objdb:
             objconf = deepcopy(objdb.get("_default", {}))
@@ -56,8 +58,9 @@ def getObjConfig(name, filename=None):
     return None
 
 
-def getGroupConfig(group_name, filename=None):
-    objdb = getConfigDB(filename)[group_name]
+def getGroupConfig(group_name, config=None):
+    objdb = getConfigDB(config)[group_name]
+
     devicedb = {}
     for name in objdb:
         if name == '_default':
@@ -68,8 +71,8 @@ def getGroupConfig(group_name, filename=None):
     return devicedb
 
 
-def findAndLoadDevice(name, cls=None, filename=None):
-    device_info = getObjConfig(name, filename=filename)
+def findAndLoadDevice(name, cls=None, config=None):
+    device_info = getObjConfig(name, config=config)
     return instantiateDevice(name, device_info, cls)
 
 
@@ -110,8 +113,8 @@ def instantiateDevice(device_key, device_info, cls=None,
     return device
 
 
-def instantiateGroup(group_name, namespace=None, cls=None, filename=None):
-    group_config = getGroupConfig(group_name, filename=filename)
+def instantiateGroup(group_name, namespace=None, cls=None, config=None):
+    group_config = getGroupConfig(group_name, config=config)
     add_to_global = _group_load_map.get(group_name, None)
     group_dict = {}
     for device_key, device_info in group_config.items():
