@@ -58,11 +58,25 @@ def _sst_add_sample_md(func):
     return _inner
 
 
+def _sst_add_comment(func):
+    @wraps(func)
+    def _inner(*args, md=None, comment=None, **kwargs):
+        md = md or {}
+        if comment is not None:
+            _md = {"comment": comment}
+        else:
+            _md = {}
+        _md.update(md)
+        return (yield from func(*args, md=_md, **kwargs))
+    return _inner
+
+
 def sst_base_scan_decorator(func):
     @wraps(func)
     @_sst_setup_detectors
     @_sst_add_sample_md
     @_sst_add_plot_md
+    @_sst_add_comment
     def _inner(*args, **kwargs):
         return (yield from func(*args, **kwargs))
     return _inner
