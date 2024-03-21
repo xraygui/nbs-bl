@@ -7,7 +7,7 @@ from sst_funcs.globalVars import (
 from sst_funcs.detectors import (
     activate_detector,
     deactivate_detector,
-    plot_detector_set,
+    activate_detector_set,
 )
 from sst_funcs.utils import merge_func
 from .plan_stubs import set_exposure
@@ -45,7 +45,7 @@ def _sst_add_plot_md(func):
         md = md or {}
         plot_hints = {}
         if plot_detectors is not None:
-            plot_detector_set(plot_detectors)
+            activate_detector_set(plot_detectors)
         for role, detlist in GLOBAL_PLOT_DETECTORS.items():
             plot_hints[role] = []
             for det in detlist:

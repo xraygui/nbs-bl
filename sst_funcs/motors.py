@@ -1,4 +1,5 @@
 from ophyd import Device
+from ophyd.utils.errors import DisconnectedError
 from .help import add_to_func_list
 from .printing import boxed_text
 from .globalVars import GLOBAL_MOTORS, GLOBAL_MOTOR_DESCRIPTIONS
@@ -45,7 +46,11 @@ def list_motors(describe=False):
     title = "Motors"
     text = []
     for name, det in GLOBAL_MOTORS.items():
-        text.append(f"{name}: {det.position}")
+        try:
+            position = det.position
+        except DisconnectedError:
+            position = "disconnected"
+        text.append(f"{name}: {position}")
         if describe:
             text.append(f"    {GLOBAL_MOTOR_DESCRIPTIONS[name]}")
     boxed_text(title, text, "white")

@@ -2,6 +2,7 @@ from ophyd import Device
 from .help import add_to_func_list
 from .printing import boxed_text
 from .globalVars import (GLOBAL_ACTIVE_DETECTORS,
+                         GLOBAL_DETECTOR_STATUS,
                          GLOBAL_DETECTORS,
                          GLOBAL_DETECTOR_DESCRIPTIONS,
                          GLOBAL_PLOT_DETECTORS,
@@ -34,6 +35,7 @@ def add_detector(det, description="", name=None, activate=True, sets=None, thres
     if name is None:
         name = det.name
     GLOBAL_DETECTORS[name] = det
+    GLOBAL_DETECTOR_STATUS[name] = "inactive"
     GLOBAL_DETECTOR_DESCRIPTIONS[name] = description
     if activate:
         activate_detector(name)
@@ -104,6 +106,13 @@ def get_detector(det_or_name):
     else:
         raise KeyError(f"Detector {det_or_name} not found in GLOBAL_DETECTORS")
 
+def get_name(det_or_name):
+    if det_or_name in GLOBAL_DETECTORS:
+        return det_or_name
+    for name, det in GLOBAL_DETECTORS.items():
+        if det == det_or_name:
+            return name
+    raise KeyError(f"Detector name {det_or_name} not found in GLOBAL_DETECTORS")
 
 @add_to_func_list
 def activate_detector(det_or_name, role=None):
@@ -118,12 +127,52 @@ def activate_detector(det_or_name, role=None):
     """
     # Todo: take a list
     detector = get_detector(det_or_name)
+    name = get_name(det_or_name)
+    if GLOBAL_DETECTOR_STATUS[name] == "disabled":
+        print(f"Detector {name} is disabled, and will not be activated!")
+        return
+    else:
+        GLOBAL_DETECTOR_STATUS[name] = "active"
     if detector not in GLOBAL_ACTIVE_DETECTORS:
         GLOBAL_ACTIVE_DETECTORS.append(detector)
     if role is not None:
         plot_detector(detector, role)
 
+@add_to_func_list
+def disable_detector(det_or_name):
+    """Disable a detector so that it is not measured, and will not be activated
 
+    Parameters
+    ----------
+    det_or_name : device or str
+        Either a device, or the name of a device in the global
+        detector buffer
+
+    """
+    deactivate_detector(det_or_name)
+    name = get_name(det_or_name)
+    GLOBAL_DETECTOR_STATUS[name] = "disabled"
+
+@add_to_func_list
+def enable_detector(det_or_name, activate=True):
+    """Enable a detector so that it can be activated
+
+    Parameters
+    ----------
+    det_or_name : device or str
+        Either a device, or the name of a device in the global
+        detector buffer
+    activate : Bool
+        If True, also activate the detector when it is enabled
+    """
+
+    detector = get_detector(det_or_name)
+    name = get_name(det_or_name)
+    GLOBAL_DETECTOR_STATUS[name] = "inactive"
+    if activate:
+        activate_detector(detector)
+    
+    
 @add_to_func_list
 def deactivate_detector(det_or_name):
     """Deactivate a detector so that it is not measured by default
@@ -137,6 +186,9 @@ def deactivate_detector(det_or_name):
     """
 
     detector = get_detector(det_or_name)
+    name = get_name(det_or_name)
+    if GLOBAL_DETECTOR_STATUS[name] != "disabled":
+        GLOBAL_DETECTOR_STATUS[name] = "inactive"
     if detector in GLOBAL_ACTIVE_DETECTORS:
         idx = GLOBAL_ACTIVE_DETECTORS.index(detector)
         GLOBAL_ACTIVE_DETECTORS.pop(idx)
@@ -206,6 +258,7 @@ def remove_detector(det_or_name):
         raise KeyError(f"Detector {det_or_name} not found in global counters dictionary")
 
     del GLOBAL_DETECTORS[name]
+    del GLOBAL_DETECTOR_STATUS[name]
     del GLOBAL_DETECTOR_DESCRIPTIONS[name]
 
 
@@ -233,9 +286,12 @@ def save_current_detectors_as_set(name):
 
 
 @add_to_func_list
-def plot_detector_set(name):
+def activate_detector_set(name):
     GLOBAL_PLOT_DETECTORS.clear()
     GLOBAL_PLOT_DETECTORS.update(GLOBAL_DETECTOR_SETS[name])
+    for role in GLOBAL_DETECTOR_SETS[name]:
+        for det in GLOBAL_DETECTOR_SETS[name][role]:
+            activate_detector(det)
 
 
 @add_to_func_list
