@@ -1,11 +1,11 @@
 import uuid
 from functools import wraps
 from bluesky.preprocessors import inject_md_wrapper
-from .preprocessors import wrap_metadata
+from .preprocessors import wrap_metadata, merge_func
 
 
 def repeat(func):
-    @wraps(func)
+    @merge_func(func)
     def inner(*args, repeat=1, **kwargs):
         if repeat > 1:
             repeat_uid = str(uuid.uuid4())
@@ -22,7 +22,7 @@ def repeat(func):
 
 def group(groupname):
     def decorator(func):
-        @wraps(func)
+        @merge_func(func)
         def inner(*args, **kwargs):
             md = {"group_md": {"uid": str(uuid.uuid4()), "name": groupname}}
             return (yield from inject_md_wrapper(func(*args, **kwargs), md))

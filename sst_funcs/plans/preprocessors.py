@@ -2,6 +2,7 @@ from bluesky.plan_stubs import open_run, close_run
 from bluesky.utils import RunEngineControlException, make_decorator
 from bluesky.preprocessors import contingency_wrapper
 from functools import wraps
+from sst_funcs.utils import merge_func
 from copy import deepcopy
 import inspect
 import uuid
@@ -57,7 +58,7 @@ def plan_md_decorator(plan_function):
 
 def wrap_metadata(param):
     def decorator(func):
-        @wraps(func)
+        @merge_func(func)
         def inner(*args, md=None, **kwargs):
             md = md or {}
             _md = {}

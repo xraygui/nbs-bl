@@ -11,6 +11,7 @@ from sst_funcs.detectors import (
 )
 from sst_funcs.utils import merge_func
 from .plan_stubs import set_exposure
+from .preprocessors import wrap_metadata
 
 
 def _sst_setup_detectors(func):
@@ -118,7 +119,7 @@ def sst_builtin_scan_wrapper(func):
     """
     base_name = func.__name__
     plan_name = f"sst_{base_name}"
-    _inner = sst_base_scan_decorator(func)
+    _inner = wrap_metadata({"plan_name": plan_name})(sst_base_scan_decorator(func))
 
     d = f"""Modifies {base_name} to automatically fill
 dets with global active beamline detectors.

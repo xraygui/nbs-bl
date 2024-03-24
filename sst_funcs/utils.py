@@ -201,14 +201,14 @@ def merge_func(
         params_func = [
             param
             for param in list(sig_func.parameters.values())
-            if param.name not in sig_wrapper.parameters
+            if param not in params_wrapper
         ]
         if params_func and params_func[0].name == "self":
             params_func = params_func[1:]
 
         combined_params = [
             param
-            for param in params_wrapper + params_func
+            for param in params_func + params_wrapper 
             if param.name not in omit_params
         ]
         combined_params.sort(key=lambda param: param.kind)

@@ -7,14 +7,16 @@ from bluesky.plan_stubs import rd
 def open_shutter():
     """Opens all default shutters, does not check any other shutters!"""
     for s in GLOBAL_DEFAULT_SHUTTER:
-        yield from s.open()
+        shutter = GLOBAL_SHUTTERS[s]
+        yield from shutter.open()
 
 
 @add_to_plan_list
 def close_shutter():
     """Closes all default shutters"""
     for s in GLOBAL_DEFAULT_SHUTTER:
-        yield from s.close()
+        shutter = GLOBAL_SHUTTERS[s]
+        yield from shutter.close()
 
 
 @add_to_plan_list

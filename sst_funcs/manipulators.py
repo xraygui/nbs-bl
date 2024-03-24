@@ -27,6 +27,10 @@ def ManipulatorBuilder(prefix, *, name, **kwargs):
     Manipulator = manipulatorFactory4Ax("SampX}Mtr", "SampY}Mtr", "SampZ}Mtr", "SampTh}Mtr")
     return Manipulator(None, prefix, origin=manip_origin, name=name, **kwargs)
 
+def ManipulatorBuilderNEXAFS(prefix, *, name, **kwargs):
+    Manipulator = manipulatorFactory4Ax("SampX}Mtr", "SampY}Mtr", "SampZ}Mtr", "SampRot}Mtr")
+    return Manipulator(None, prefix, origin=manip_origin, name=name, **kwargs)
+
 
 def manipulatorFactory1Ax(xPV):
     class MultiMesh(Manipulator1AxBase):
