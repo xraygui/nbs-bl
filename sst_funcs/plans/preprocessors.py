@@ -64,7 +64,7 @@ def wrap_metadata(param):
             _md = {}
             _md.update(param)
             _md.update(md)
-            return func(*args, md=_md, **kwargs)
+            return (yield from func(*args, md=_md, **kwargs))
         return inner
     return decorator
 

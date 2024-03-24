@@ -119,7 +119,14 @@ def sst_builtin_scan_wrapper(func):
     """
     base_name = func.__name__
     plan_name = f"sst_{base_name}"
-    _inner = wrap_metadata({"plan_name": plan_name})(sst_base_scan_decorator(func))
+
+    @wrap_metadata({"plan_name": plan_name})
+    @sst_base_scan_decorator
+    @merge_func(func)
+    def _inner(*args, **kwargs):
+        return (yield from func(*args, **kwargs))
+
+    #_inner = wrap_metadata({"plan_name": plan_name})(sst_base_scan_decorator(func))
 
     d = f"""Modifies {base_name} to automatically fill
 dets with global active beamline detectors.
