@@ -16,10 +16,5 @@ for key in GLOBAL_IMPORT_DICTIONARY:
     if key not in globals():
         globals()[key] = GLOBAL_IMPORT_DICTIONARY[key]
 
-if is_re_worker_active():
-    RE = RunEngine(call_returns_result=False)
-else:
-    RE = RunEngine(call_returns_result=True)
-load_RE_commands(RE)
 
 sst_help()

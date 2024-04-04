@@ -1,5 +1,8 @@
 from .status import StatusList, StatusDict
 from .queueserver import add_status
+from bluesky.preprocessors import SupplementalData
+
+GLOBAL_SUPPLEMENTAL_DATA = SupplementalData()
 
 
 GLOBAL_DETECTORS = StatusDict()
@@ -9,6 +12,7 @@ GLOBAL_ACTIVE_DETECTORS = StatusList()
 GLOBAL_PLOT_DETECTORS = StatusDict()
 GLOBAL_DETECTOR_SETS = StatusDict()
 GLOBAL_DETECTOR_THRESHOLDS = StatusDict()
+GLOBAL_ALIGNMENT_DETECTOR = StatusList()
 
 add_status("ACTIVE_DETECTORS", GLOBAL_ACTIVE_DETECTORS)
 add_status("DETECTOR_DESCRIPTIONS", GLOBAL_DETECTOR_DESCRIPTIONS)

@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-with open('requirements.txt') as f:
+with open("requirements.txt") as f:
     requirements = f.read().split()
 
 setup(
@@ -10,5 +10,5 @@ setup(
     install_requires=requirements,
     use_scm_version=True,
     name="sst_funcs",
-    packages=find_packages()
+    packages=find_packages(),
 )

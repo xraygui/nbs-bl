@@ -8,6 +8,7 @@ from .shutters import add_shutter
 from .mirrors import add_mirror
 from .gatevalves import add_valve
 from .manipulators import add_manipulator
+from .globalVars import GLOBAL_SUPPLEMENTAL_DATA
 
 GLOBAL_CONF_DB = {}
 
@@ -103,8 +104,11 @@ def instantiateDevice(device_key, device_info, cls=None,
     prefix = device_info.pop("prefix", "")
     add_to_namespace = device_info.pop("_add_to_ns_", True)
     extra_info = device_info.pop("_extra_", {})
+    add_to_baseline = device_info.pop("_baseline_", False)
     device = cls(prefix, **device_info)
 
+    if add_to_baseline:
+        GLOBAL_SUPPLEMENTAL_DATA.baseline.append(device)
     if add_to_namespace and namespace is not None:
         namespace[device_key] = device
     if add_to_global is not None:

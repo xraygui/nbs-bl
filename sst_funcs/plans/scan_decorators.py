@@ -97,8 +97,8 @@ def _sst_add_comment(func):
             _md = {}
         _md.update(md)
         return (yield from func(*args, md=_md, **kwargs))
-
     return _inner
+
 
 
 def sst_base_scan_decorator(func):
