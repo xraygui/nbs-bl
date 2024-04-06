@@ -12,6 +12,7 @@ from sst_funcs.detectors import (
 from sst_funcs.utils import merge_func
 from .plan_stubs import set_exposure
 from .preprocessors import wrap_metadata
+from sst_funcs.plans.groups import repeat
 
 
 def _sst_setup_detectors(func):
@@ -83,18 +84,22 @@ def _sst_add_sample_md(func):
 
 def _sst_add_comment(func):
     @merge_func(func)
-    def _inner(*args, md=None, comment=None, **kwargs):
+    def _inner(*args, md=None, comment=None, group_name=None, **kwargs):
         """
         Parameters
         ----------
         comment : str, optional
             A comment that will be added into the run metadata. If not provided, no comment will be added.
+        group_name : str, optional
+            A group name label that will be added into the run metadata.
         """
         md = md or {}
         if comment is not None:
             _md = {"comment": comment}
         else:
             _md = {}
+        if group_name is not None:
+            _md['group_name'] = group_name
         _md.update(md)
         return (yield from func(*args, md=_md, **kwargs))
     return _inner
@@ -102,6 +107,7 @@ def _sst_add_comment(func):
 
 
 def sst_base_scan_decorator(func):
+    @repeat
     @_sst_setup_detectors
     @_sst_add_sample_md
     @_sst_add_plot_md

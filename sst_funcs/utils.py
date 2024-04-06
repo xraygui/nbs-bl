@@ -168,7 +168,7 @@ def sort_params(params):
 
 
 def merge_func(
-    func, omit_params=[], exclude_wrapper_args=True, exclude_wrapper_kwargs=True
+        func, omit_params=[], exclude_wrapper_args=True, exclude_wrapper_kwargs=True, use_func_name=True
 ):
     """
     A decorator that merges the docstrings and function signatures of the wrapped function and the wrapper function.
@@ -227,6 +227,8 @@ def merge_func(
 
         # Update the signature of the wrapper function
         wrapper.__signature__ = new_sig
+        if use_func_name:
+            wrapper.__name__ = func.__name__
 
         return wrapper
 

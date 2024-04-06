@@ -2,6 +2,8 @@ from sst_funcs.globalVars import GLOBAL_ACTIVE_DETECTORS
 from sst_funcs.help import add_to_plan_list
 import warnings
 from bluesky import Msg
+from bluesky.plan_stubs import rd, sleep
+import time
 
 GLOBAL_EXPOSURE_TIME = 1.0
 
@@ -23,3 +25,36 @@ def set_exposure(time=None, extra_dets=[]):
                 yield from call_obj(d, "set_exposure", GLOBAL_EXPOSURE_TIME)
         except RuntimeError as ex:
             warnings.warn(repr(ex), RuntimeWarning)
+
+def wait_for_signal_below(sig, val, timeout=None, sleep_time=10):
+    start_time = time.time()
+    while True:
+        if timeout is not None and (time.time() - start_time > timeout):
+            raise TimeoutError
+        reading = yield from rd(sig)
+        if reading < val:
+            return True
+        else:
+            yield from sleep(sleep_time)
+
+def wait_for_signal_equals(sig, val, timeout=None, sleep_time=10):
+    start_time = time.time()
+    while True:
+        if timeout is not None and (time.time() - start_time > timeout):
+            raise TimeoutError
+        reading = yield from rd(sig)
+        if reading == val:
+            return True
+        else:
+            yield from sleep(sleep_time)
+            
+def wait_for_signal_above(sig, val, timeout=None, sleep_time=10):
+    start_time = time.time()
+    while True:
+        if timeout is not None and (time.time() - start_time > timeout):
+            raise TimeoutError
+        reading = yield from rd(sig)
+        if reading > val:
+            return True
+        else:
+            yield from sleep(sleep_time)
