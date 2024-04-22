@@ -7,6 +7,8 @@ from .globalVars import (
     GLOBAL_HARDWARE,
     GLOBAL_SUPPLEMENTAL_DATA,
     GLOBAL_ALIGNMENT_DETECTOR,
+    GLOBAL_ENERGY,
+    GLOBAL_MANIPULATOR,
 )
 from .detectors import add_detector, add_detector_set
 from .motors import add_motor
@@ -108,6 +110,8 @@ def configure_beamline(beamline_file, object_file, namespace=None):
     configure_shutters(beamline_config.get("shutters", {}))
     configure_mirrors(beamline_config.get("mirors", {}))
     configure_gatevalves(beamline_config.get("gatevalves", {}))
+    configure_energy(beamline_config.get("energy", {}))
+    configure_manipulators(beamline_config.get("manipulators", {}))
     configure_alias(beamline_config.get("alias", {}), namespace)
 
 
@@ -137,6 +141,10 @@ def configure_detectors(config_dict):
     for key, val in alignment.items():
         dev = GLOBAL_HARDWARE[val]
         GLOBAL_ALIGNMENT_DETECTOR[key] = dev
+    if "indirect" in GLOBAL_ALIGNMENT_DETECTOR:
+        GLOBAL_ALIGNMENT_DETECTOR["default"] = GLOBAL_ALIGNMENT_DETECTOR["indirect"]
+    elif "direct" in GLOBAL_ALIGNMENT_DETECTOR:
+        GLOBAL_ALIGNMENT_DETECTOR["default"] = GLOBAL_ALIGNMENT_DETECTOR["direct"]
 
 
 def configure_motors(config_dict):
@@ -153,6 +161,21 @@ def configure_shutters(config_dict):
 
 def configure_mirrors(config_dict):
     _configure_base(config_dict, add_mirror, True)
+
+
+def configure_energy(config_dict):
+    energy_key = config_dict.get("energy")
+    energy = GLOBAL_HARDWARE[energy_key]
+    GLOBAL_ENERGY["energy"] = energy
+    if energy not in GLOBAL_SUPPLEMENTAL_DATA.baseline:
+        GLOBAL_SUPPLEMENTAL_DATA.baseline.append(energy)
+    slit_key = config_dict.get("slit")
+    GLOBAL_ENERGY["slit"] = GLOBAL_HARDWARE[slit_key]
+
+
+def configure_manipulators(config_dict):
+    for name, device_key in config_dict.items():
+        GLOBAL_MANIPULATOR[name] = device_key
 
 
 def configure_modules(beamline_file):
