@@ -3,7 +3,8 @@ from .queueserver import add_status
 from bluesky.preprocessors import SupplementalData
 
 GLOBAL_SUPPLEMENTAL_DATA = SupplementalData()
-
+GLOBAL_HARDWARE = StatusDict()
+GLOBAL_CONFIG_GROUPS = StatusDict()
 
 GLOBAL_DETECTORS = StatusDict()
 GLOBAL_DETECTOR_DESCRIPTIONS = StatusDict()
@@ -12,7 +13,7 @@ GLOBAL_ACTIVE_DETECTORS = StatusList()
 GLOBAL_PLOT_DETECTORS = StatusDict()
 GLOBAL_DETECTOR_SETS = StatusDict()
 GLOBAL_DETECTOR_THRESHOLDS = StatusDict()
-GLOBAL_ALIGNMENT_DETECTOR = StatusList()
+GLOBAL_ALIGNMENT_DETECTOR = StatusDict()
 
 add_status("ACTIVE_DETECTORS", GLOBAL_ACTIVE_DETECTORS)
 add_status("DETECTOR_DESCRIPTIONS", GLOBAL_DETECTOR_DESCRIPTIONS)
@@ -38,11 +39,12 @@ add_status("SAMPLE_SELECTED", GLOBAL_SELECTED)
 
 GLOBAL_SHUTTERS = StatusDict()
 GLOBAL_MIRRORS = StatusDict()
-GLOBAL_DEFAULT_SHUTTER = StatusList()
+GLOBAL_DEFAULT_SHUTTER = StatusDict()
 
-GLOBAL_MANIPULATOR = StatusList()
+GLOBAL_MANIPULATOR = StatusDict()
 
 GLOBAL_GATEVALVES = StatusDict()
+GLOBAL_ENERGY = StatusDict()
 
 # Need to make this more uniform to fit with plans & scans
 GLOBAL_XAS_PLANS = StatusDict()

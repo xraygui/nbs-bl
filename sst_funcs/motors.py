@@ -2,7 +2,7 @@ from ophyd import Device
 from ophyd.utils.errors import DisconnectedError
 from .help import add_to_func_list
 from .printing import boxed_text
-from .globalVars import GLOBAL_MOTORS, GLOBAL_MOTOR_DESCRIPTIONS
+from .globalVars import GLOBAL_MOTORS, GLOBAL_MOTOR_DESCRIPTIONS, GLOBAL_HARDWARE
 
 
 def add_motor(motor, description="", name=None):

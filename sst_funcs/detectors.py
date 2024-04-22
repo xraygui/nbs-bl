@@ -9,7 +9,9 @@ from .globalVars import (
     GLOBAL_PLOT_DETECTORS,
     GLOBAL_DETECTOR_SETS,
     GLOBAL_DETECTOR_THRESHOLDS,
+    GLOBAL_HARDWARE,
 )
+from .utils import iterfy
 
 
 def add_detector(
@@ -273,15 +275,23 @@ def remove_detector(det_or_name):
     del GLOBAL_DETECTOR_DESCRIPTIONS[name]
 
 
-def add_detector_set(name, primary, auxiliary, normalization, reference, inactive=[]):
+def add_detector_set(
+    name, primary=[], auxiliary=[], normalization=[], reference=[], inactive=[]
+):
     det_set = {}
-    det_set["primary"] = [get_detector(det_or_name) for det_or_name in primary]
-    det_set["auxiliary"] = [get_detector(det_or_name) for det_or_name in auxiliary]
-    det_set["normalization"] = [
-        get_detector(det_or_name) for det_or_name in normalization
+    det_set["primary"] = [get_detector(det_or_name) for det_or_name in iterfy(primary)]
+    det_set["auxiliary"] = [
+        get_detector(det_or_name) for det_or_name in iterfy(auxiliary)
     ]
-    det_set["reference"] = [get_detector(det_or_name) for det_or_name in reference]
-    det_set["inactive"] = [get_detector(det_or_name) for det_or_name in inactive]
+    det_set["normalization"] = [
+        get_detector(det_or_name) for det_or_name in iterfy(normalization)
+    ]
+    det_set["reference"] = [
+        get_detector(det_or_name) for det_or_name in iterfy(reference)
+    ]
+    det_set["inactive"] = [
+        get_detector(det_or_name) for det_or_name in iterfy(inactive)
+    ]
     GLOBAL_DETECTOR_SETS[name] = det_set
 
 

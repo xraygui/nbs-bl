@@ -1,137 +1,177 @@
-import yaml
-from copy import deepcopy
-from importlib import import_module
-from os.path import join, dirname
-from .detectors import add_detector
+from os.path import join
+
+# from pkg_resources import iter_entry_points
+import toml
+from .hw import _load_hardware, _alias_device
+from .globalVars import (
+    GLOBAL_HARDWARE,
+    GLOBAL_SUPPLEMENTAL_DATA,
+    GLOBAL_ALIGNMENT_DETECTOR,
+)
+from .detectors import add_detector, add_detector_set
 from .motors import add_motor
 from .shutters import add_shutter
-from .mirrors import add_mirror
 from .gatevalves import add_valve
-from .manipulators import add_manipulator
-from .globalVars import GLOBAL_SUPPLEMENTAL_DATA
-
-GLOBAL_CONF_DB = {}
-
-_group_load_map = {}
-_group_load_map['detectors'] = add_detector
-_group_load_map['motors'] = add_motor
-_group_load_map['shutters'] = add_shutter
-_group_load_map['mirrors'] = add_mirror
-_group_load_map['gatevalves'] = add_valve
-#_group_load_map['manipulators'] = add_manipulator
-
-# configfile = join(dirname(__file__), "config.yaml")
-# configdb = loadConfigDB(configfile)
-def loadConfigDB(filename, saveGlobal=True):
-    global GLOBAL_CONF_DB
-    with open(filename) as f:
-        db = yaml.safe_load(f)
-    if saveGlobal:
-        GLOBAL_CONF_DB = db
-    return db
+from .mirrors import add_mirror
 
 
-def getConfigDB(config=None):
-    if isinstance(config, dict):
-        db = config
-    elif config is not None:
-        db = loadConfigDB(config, saveGlobal=False)
-    else:
-        db = GLOBAL_CONF_DB
-    return db
+def get_startup_dir():
+    """
+    Get the IPython startup directory.
+
+    Returns
+    -------
+    str
+        The path to the IPython startup directory.
+    """
+    ip = get_ipython()
+    startup_dir = ip.profile_dir.startup_dir
+    return startup_dir
 
 
-def simpleResolver(fullclassname):
-    class_name = fullclassname.split(".")[-1]
-    module_name = ".".join(fullclassname.split(".")[:-1])
-    module = import_module(module_name)
-    cls = getattr(module, class_name)
-    return cls
+def load_and_configure_everything(startup_dir=None):
+    """
+    Load and configure all necessary hardware and settings for the beamline.
+
+    Parameters
+    ----------
+    startup_dir : str, optional
+        The directory from which to load configuration files. If not specified, uses the IPython startup directory.
+    """
+    if startup_dir is None:
+        startup_dir = get_startup_dir()
+    # load_settings(startup_dir=startup_dir)
+    object_file = join(startup_dir, "devices.toml")
+    ip = get_ipython()
+    _load_hardware(object_file, ip.user_ns)
+    beamline_file = join(startup_dir, "beamline.toml")
+    settings_file = join(startup_dir, "settings.toml")
+    configure_beamline(beamline_file, object_file)
+    configure_modules(settings_file)
 
 
-def getObjConfig(name, config=None):
-    confdb = getConfigDB(config)
-    for objdb in confdb.values():
-        if name in objdb:
-            objconf = deepcopy(objdb.get("_default", {}))
-            objconf.update(objdb[name])
-            return objconf
-    return None
+def load_settings(settings_file):
+    """
+    Load settings from a TOML file.
+
+    Parameters
+    ----------
+    settings_file : str
+        The path to the settings file.
+
+    Returns
+    -------
+    dict
+        The settings loaded from the file.
+    """
+    # Things that are currently in ucal configuration/settings
+    with open(settings_file, "r") as f:
+        settings = toml.load(f)
+    return settings
 
 
-def getGroupConfig(group_name, config=None):
-    objdb = getConfigDB(config)[group_name]
-
-    devicedb = {}
-    for name in objdb:
-        if name == '_default':
-            continue
-        objconf = deepcopy(objdb.get("_default", {}))
-        objconf.update(objdb[name])
-        devicedb[name] = objconf
-    return devicedb
-
-
-def findAndLoadDevice(name, cls=None, config=None):
-    device_info = getObjConfig(name, config=config)
-    return instantiateDevice(name, device_info, cls)
+def auto_add_devices_to_groups(beamline_config, devices):
+    for obj_key, obj_dict in devices.items():
+        if "_group" in obj_dict:
+            gkey = obj_dict["_group"]
+            if gkey not in beamline_config:
+                beamline_config[gkey] = {}
+            group = beamline_config[gkey]
+            if "devices" not in group:
+                group["devices"] = []
+            if obj_key not in group["devices"] and obj_key not in group.get(
+                "exclude", []
+            ):
+                group["devices"].append(obj_key)
+    return beamline_config
 
 
-"""
-def instantiateDevice(device_info, cls=None, namespace=None):
-    if cls is not None:
-        device_info.pop("_target_")
-        prefix = device_info.pop("prefix", "")
-        return cls(prefix, **device_info)
-    elif device_info.get('_target_', None) is not None:
-        cls = simpleResolver(device_info.pop('_target_'))
-        prefix = device_info.pop('prefix', '')
-        return cls(prefix, **device_info)
-    else:
-        raise KeyError("Could not find '_target_' in {}".format(device_info))
-"""
+def configure_beamline(beamline_file, object_file, namespace=None):
+    """
+    Configure the beamline using settings from TOML files.
+
+    Parameters
+    ----------
+    beamline_file : str
+        The path to the beamline configuration file.
+    object_file : str
+        The path to the object configuration file.
+    """
+    with open(object_file, "r") as f:
+        devices = toml.load(f)
+    with open(beamline_file, "r") as f:
+        beamline_config = toml.load(f)
+    auto_add_devices_to_groups(beamline_config, devices)
+
+    configure_detectors(beamline_config.get("detectors", {}))
+    configure_motors(beamline_config.get("motors", {}))
+    configure_shutters(beamline_config.get("shutters", {}))
+    configure_mirrors(beamline_config.get("mirors", {}))
+    configure_gatevalves(beamline_config.get("gatevalves", {}))
+    configure_alias(beamline_config.get("alias", {}), namespace)
 
 
-def instantiateDevice(device_key, device_info, cls=None,
-                      namespace=None, add_to_global=None):
-    if cls is not None:
-        device_info.pop("_target_", None)
-    elif device_info.get('_target_', None) is not None:
-        cls = simpleResolver(device_info.pop('_target_'))
-    else:
-        raise KeyError("Could not find '_target_' in {}".format(device_info))
-
-    prefix = device_info.pop("prefix", "")
-    add_to_namespace = device_info.pop("_add_to_ns_", True)
-    extra_info = device_info.pop("_extra_", {})
-    add_to_baseline = device_info.pop("_baseline_", False)
-    device = cls(prefix, **device_info)
-
-    if add_to_baseline:
-        GLOBAL_SUPPLEMENTAL_DATA.baseline.append(device)
-    if add_to_namespace and namespace is not None:
-        namespace[device_key] = device
-    if add_to_global is not None:
-        f"Adding {device_key} to {add_to_global}"
-        add_to_global(device, name=device_key, **extra_info)
-    return device
+def _configure_base(config_dict, add_device=None, add_to_baseline=False):
+    devices = config_dict.get("devices", [])
+    configuration = config_dict.get("configuration", {})
+    for device in devices:
+        dev = GLOBAL_HARDWARE[device]
+        if add_device is not None:
+            add_device(dev, name=device, **configuration.get(device, {}))
+        if add_to_baseline:
+            if dev not in GLOBAL_SUPPLEMENTAL_DATA.baseline:
+                GLOBAL_SUPPLEMENTAL_DATA.baseline.append(dev)
 
 
-def instantiateGroup(group_name, namespace=None, cls=None, config=None):
-    group_config = getGroupConfig(group_name, config=config)
-    add_to_global = _group_load_map.get(group_name, None)
-    group_dict = {}
-    for device_key, device_info in group_config.items():
-        dev = instantiateDevice(device_key, device_info, cls,
-                                namespace, add_to_global)
-        group_dict[device_key] = dev
-    return group_dict
+def configure_alias(alias_dict, namespace=None):
+    for alias_key, device_key in alias_dict.items():
+        _alias_device(device_key, alias_key, namespace)
 
 
-def loadDeviceConfig(filename, namespace=None):
-    db = loadConfigDB(filename)
-    device_dict = {}
-    for group in db:
-        group_dict = instantiateGroup(group, namespace)
-        device_dict.update(group_dict)
-    return device_dict
+def configure_detectors(config_dict):
+    _configure_base(config_dict, add_detector)
+    groups = config_dict.get("groups", {})
+    for key, val in groups.items():
+        add_detector_set(key, **val)
+    alignment = config_dict.get("alignment", {})
+    for key, val in alignment.items():
+        dev = GLOBAL_HARDWARE[val]
+        GLOBAL_ALIGNMENT_DETECTOR[key] = dev
+
+
+def configure_motors(config_dict):
+    _configure_base(config_dict, add_motor, True)
+
+
+def configure_gatevalves(config_dict):
+    _configure_base(config_dict, add_valve, False)
+
+
+def configure_shutters(config_dict):
+    _configure_base(config_dict, add_shutter, True)
+
+
+def configure_mirrors(config_dict):
+    _configure_base(config_dict, add_mirror, True)
+
+
+def configure_modules(beamline_file):
+    """
+    Load and configure modules based on a list of names.
+
+    Parameters
+    ----------
+    entry_points : list of str
+        The list of entry point names to load and configure.
+    """
+    from importlib import import_module
+
+    with open(beamline_file, "r") as f:
+        beamline_config = toml.load(f)
+    modules = beamline_config.get("modules", [])
+    ip = get_ipython()
+
+    for module_name in modules:
+        module = import_module(module_name)
+        print(f"Trying to import {module_name} from {module.__file__}")
+        ip.run_line_magic("run", module.__file__)

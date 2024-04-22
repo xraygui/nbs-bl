@@ -99,11 +99,11 @@ def _sst_add_comment(func):
         else:
             _md = {}
         if group_name is not None:
-            _md['group_name'] = group_name
+            _md["group_name"] = group_name
         _md.update(md)
         return (yield from func(*args, md=_md, **kwargs))
-    return _inner
 
+    return _inner
 
 
 def sst_base_scan_decorator(func):
@@ -132,7 +132,7 @@ def sst_builtin_scan_wrapper(func):
     def _inner(*args, **kwargs):
         return (yield from func(*args, **kwargs))
 
-    #_inner = wrap_metadata({"plan_name": plan_name})(sst_base_scan_decorator(func))
+    # _inner = wrap_metadata({"plan_name": plan_name})(sst_base_scan_decorator(func))
 
     d = f"""Modifies {base_name} to automatically fill
 dets with global active beamline detectors.
