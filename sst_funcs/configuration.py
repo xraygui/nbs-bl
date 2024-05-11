@@ -187,7 +187,7 @@ def configure_modules(beamline_file):
     entry_points : list of str
         The list of entry point names to load and configure.
     """
-    from importlib import import_module
+    from importlib.util import find_spec
 
     with open(beamline_file, "r") as f:
         beamline_config = toml.load(f)
@@ -195,6 +195,6 @@ def configure_modules(beamline_file):
     ip = get_ipython()
 
     for module_name in modules:
-        module = import_module(module_name)
-        print(f"Trying to import {module_name} from {module.__file__}")
-        ip.run_line_magic("run", module.__file__)
+        module_path = find_spec(module_name).origin
+        print(f"Trying to import {module_name} from {module_path}")
+        ip.run_line_magic("run", module_path)

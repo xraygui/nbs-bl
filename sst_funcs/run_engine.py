@@ -14,7 +14,7 @@ async def call_obj(msg):
     obj = msg.obj
     kwargs = msg.kwargs
     args = msg.args
-    command = kwargs.pop('method')
+    command = kwargs.pop("method")
     ret = getattr(obj, command)(*args, **kwargs)
     return ret
 
@@ -22,10 +22,15 @@ async def call_obj(msg):
 def load_RE_commands(engine):
     engine.register_command("call_obj", call_obj)
 
-if is_re_worker_active():
-    RE = RunEngine(call_returns_result=False)
-else:
-    RE = RunEngine(call_returns_result=True)
 
-load_RE_commands(RE)
-RE.preprocessors.append(GLOBAL_SUPPLEMENTAL_DATA)
+def create_run_engine():
+    if is_re_worker_active():
+        RE = RunEngine(call_returns_result=False)
+    else:
+        RE = RunEngine(call_returns_result=True)
+    return RE
+
+
+def setup_run_engine(RE):
+    load_RE_commands(RE)
+    RE.preprocessors.append(GLOBAL_SUPPLEMENTAL_DATA)
