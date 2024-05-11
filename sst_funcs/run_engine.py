@@ -22,7 +22,6 @@ async def call_obj(msg):
 def load_RE_commands(engine):
     engine.register_command("call_obj", call_obj)
 
-
 def create_run_engine():
     if is_re_worker_active():
         RE = RunEngine(call_returns_result=False)

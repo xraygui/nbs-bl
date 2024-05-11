@@ -1,7 +1,10 @@
-from os.path import join
+from os.path import join, exists
 
 # from pkg_resources import iter_entry_points
-import toml
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 from .hw import _load_hardware, _alias_device
 from .globalVars import (
     GLOBAL_HARDWARE,
@@ -10,12 +13,13 @@ from .globalVars import (
     GLOBAL_ENERGY,
     GLOBAL_MANIPULATOR,
 )
+from .settings import settings
 from .detectors import add_detector, add_detector_set
 from .motors import add_motor
 from .shutters import add_shutter
 from .gatevalves import add_valve
 from .mirrors import add_mirror
-
+from .queueserver import request_update, get_status
 
 def get_startup_dir():
     """
@@ -42,14 +46,17 @@ def load_and_configure_everything(startup_dir=None):
     """
     if startup_dir is None:
         startup_dir = get_startup_dir()
-    # load_settings(startup_dir=startup_dir)
-    object_file = join(startup_dir, "devices.toml")
-    ip = get_ipython()
-    _load_hardware(object_file, ip.user_ns)
-    beamline_file = join(startup_dir, "beamline.toml")
+    settings.startup_dir = startup_dir
     settings_file = join(startup_dir, "settings.toml")
+    load_settings(settings_file)
+    object_file = join(startup_dir, settings.device_filename)
+    ip = get_ipython()
+    ip.user_ns['get_status'] = get_status
+    ip.user_ns['request_update'] = request_update
+    _load_hardware(object_file, ip.user_ns)
+    beamline_file = join(startup_dir, settings.beamline_filename)
     configure_beamline(beamline_file, object_file)
-    configure_modules(settings_file)
+    configure_modules()
 
 
 def load_settings(settings_file):
@@ -67,9 +74,13 @@ def load_settings(settings_file):
         The settings loaded from the file.
     """
     # Things that are currently in ucal configuration/settings
-    with open(settings_file, "r") as f:
-        settings = toml.load(f)
-    return settings
+    if not exists(settings_file):
+        print("No settings found, using defaults")
+        return
+    with open(settings_file, "rb") as f:
+        settings_dict = tomllib.load(f)
+    for key in settings_dict:
+        setattr(settings, key, settings_dict[key])
 
 
 def auto_add_devices_to_groups(beamline_config, devices):
@@ -99,32 +110,31 @@ def configure_beamline(beamline_file, object_file, namespace=None):
     object_file : str
         The path to the object configuration file.
     """
-    with open(object_file, "r") as f:
-        devices = toml.load(f)
-    with open(beamline_file, "r") as f:
-        beamline_config = toml.load(f)
+    with open(object_file, "rb") as f:
+        devices = tomllib.load(f)
+    with open(beamline_file, "rb") as f:
+        beamline_config = tomllib.load(f)
     auto_add_devices_to_groups(beamline_config, devices)
 
     configure_detectors(beamline_config.get("detectors", {}))
     configure_motors(beamline_config.get("motors", {}))
     configure_shutters(beamline_config.get("shutters", {}))
-    configure_mirrors(beamline_config.get("mirors", {}))
+    configure_mirrors(beamline_config.get("mirrors", {}))
     configure_gatevalves(beamline_config.get("gatevalves", {}))
     configure_energy(beamline_config.get("energy", {}))
     configure_manipulators(beamline_config.get("manipulators", {}))
     configure_alias(beamline_config.get("alias", {}), namespace)
 
 
-def _configure_base(config_dict, add_device=None, add_to_baseline=False):
+def _configure_base(config_dict, add_device=None, should_add_to_baseline=False):
     devices = config_dict.get("devices", [])
     configuration = config_dict.get("configuration", {})
     for device in devices:
         dev = GLOBAL_HARDWARE[device]
         if add_device is not None:
             add_device(dev, name=device, **configuration.get(device, {}))
-        if add_to_baseline:
-            if dev not in GLOBAL_SUPPLEMENTAL_DATA.baseline:
-                GLOBAL_SUPPLEMENTAL_DATA.baseline.append(dev)
+        if should_add_to_baseline:
+            add_to_baseline(device, False)
 
 
 def configure_alias(alias_dict, namespace=None):
@@ -163,14 +173,31 @@ def configure_mirrors(config_dict):
     _configure_base(config_dict, add_mirror, True)
 
 
+def get_device(device_name, get_subdevice=True):
+    device_parts = device_name.split('.')
+    device = GLOBAL_HARDWARE[device_parts[0]]
+    for subdev in device_parts[1:]:
+        device = getattr(device, subdev)
+    return device
+
+
+def add_to_baseline(device_or_name, only_subdevice=False):
+    if isinstance(device_or_name, [str]):
+        device = get_device(device_or_name, only_subdevice)
+    else:
+        device = device_or_name
+    if device not in GLOBAL_SUPPLEMENTAL_DATA.baseline:
+        GLOBAL_SUPPLEMENTAL_DATA.baseline.append(device)
+
+
 def configure_energy(config_dict):
     energy_key = config_dict.get("energy")
-    energy = GLOBAL_HARDWARE[energy_key]
-    GLOBAL_ENERGY["energy"] = energy
-    if energy not in GLOBAL_SUPPLEMENTAL_DATA.baseline:
-        GLOBAL_SUPPLEMENTAL_DATA.baseline.append(energy)
+    GLOBAL_ENERGY["energy"] = get_device(energy_key)
+    add_to_baseline(energy_key)
+
     slit_key = config_dict.get("slit")
-    GLOBAL_ENERGY["slit"] = GLOBAL_HARDWARE[slit_key]
+    GLOBAL_ENERGY["slit"] = get_device(slit_key)
+    add_to_baseline(slit_key)
 
 
 def configure_manipulators(config_dict):
@@ -178,7 +205,7 @@ def configure_manipulators(config_dict):
         GLOBAL_MANIPULATOR[name] = device_key
 
 
-def configure_modules(beamline_file):
+def configure_modules():
     """
     Load and configure modules based on a list of names.
 
@@ -188,10 +215,7 @@ def configure_modules(beamline_file):
         The list of entry point names to load and configure.
     """
     from importlib.util import find_spec
-
-    with open(beamline_file, "r") as f:
-        beamline_config = toml.load(f)
-    modules = beamline_config.get("modules", [])
+    modules = settings.modules
     ip = get_ipython()
 
     for module_name in modules:

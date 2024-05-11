@@ -26,6 +26,7 @@ def set_exposure(time=None, extra_dets=[]):
         except RuntimeError as ex:
             warnings.warn(repr(ex), RuntimeWarning)
 
+
 def wait_for_signal_below(sig, val, timeout=None, sleep_time=10):
     start_time = time.time()
     while True:
@@ -37,6 +38,7 @@ def wait_for_signal_below(sig, val, timeout=None, sleep_time=10):
         else:
             yield from sleep(sleep_time)
 
+
 def wait_for_signal_equals(sig, val, timeout=None, sleep_time=10):
     start_time = time.time()
     while True:
@@ -47,7 +49,8 @@ def wait_for_signal_equals(sig, val, timeout=None, sleep_time=10):
             return True
         else:
             yield from sleep(sleep_time)
-            
+
+         
 def wait_for_signal_above(sig, val, timeout=None, sleep_time=10):
     start_time = time.time()
     while True:
