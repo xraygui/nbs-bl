@@ -17,6 +17,7 @@ from .preprocessors import wrap_metadata
 from sst_funcs.plans.groups import repeat
 from sst_funcs.settings import settings
 
+
 def _beamline_setup(func):
     @merge_func(func)
     def inner(*args, sample=None, eslit=None, energy=None, **kwargs):
@@ -29,19 +30,21 @@ def _beamline_setup(func):
             If not None, will change the beamline exit slit. Note that currently, eslit values are given as -2* the desired exit slit size in mm.
         """
 
-        #if sample is not None:
+        # if sample is not None:
         #    yield from sample_move(0, 0, 45, sample)
         if eslit is not None:
-            yield from mv(GLOBAL_ENERGY['slit'], eslit)
+            yield from mv(GLOBAL_ENERGY["slit"], eslit)
         if energy is not None:
-            yield from mv(GLOBAL_ENERGY['energy'], energy)
+            yield from mv(GLOBAL_ENERGY["energy"], energy)
         return (yield from func(*args, **kwargs))
 
     return inner
 
+
 def _wrap_xas(element):
     def decorator(func):
         return wrap_metadata({"edge": element, "scantype": "xas"})(func)
+
     return decorator
 
 
@@ -155,14 +158,17 @@ def sst_add_bl_prefix(func):
     plan_name = f"{settings.beamline_prefix}_{base_name}"
     func.__name__ = plan_name
     return func
-    
+
+
 def wrap_plan_name(func):
     return wrap_metadata({"plan_name": func.__name__})(func)
-    
+
+
 def sst_builtin_scan_wrapper(func):
     """
     Designed to wrap bluesky built-in scans to produce an sst version
     """
+
     @wrap_plan_name
     @sst_add_bl_prefix
     @sst_base_scan_decorator

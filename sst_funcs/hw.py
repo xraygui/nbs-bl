@@ -1,5 +1,11 @@
 from .load import loadDeviceConfig as _loadDeviceConfig
+from nbs_core.autoload import loadFromConfig, instantiateOphyd
 from .globalVars import GLOBAL_HARDWARE
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 """
 ip = get_ipython()
@@ -17,10 +23,15 @@ else:
 
 def _load_hardware(config_file, namespace=None):
     print(f"Attempting to load objects in {config_file}")
-    device_dict = _loadDeviceConfig(config_file, namespace)
-    for key, dev in device_dict.items():
+    with open(config_file, "rb") as f:
+        config = tomllib.load(f)
+    devices, groups, roles = loadFromConfig(
+        config, instantiateOphyd, alias=True, namespace=namespace
+    )
+    for key, dev in devices.items():
         globals()[key] = dev
         GLOBAL_HARDWARE[key] = dev
+    return devices, groups, roles
 
 
 def _alias_device(device_key, alias_key, namespace=None):
