@@ -1,7 +1,7 @@
 from .scan_decorators import sst_builtin_scan_wrapper, sst_add_bl_prefix
 from .scan_base import _make_gscan_points
-from sst_funcs.help import add_to_scan_list
-from sst_funcs.utils import merge_func
+from ..help import add_to_scan_list
+from ..utils import merge_func
 
 import bluesky.plans as bp
 from bluesky.plan_stubs import mv

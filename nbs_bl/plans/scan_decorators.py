@@ -1,21 +1,21 @@
 from functools import wraps
-from sst_funcs.globalVars import (
+from ..globalVars import (
     GLOBAL_ACTIVE_DETECTORS,
     GLOBAL_PLOT_DETECTORS,
     GLOBAL_SELECTED,
     GLOBAL_ENERGY,
 )
-from sst_funcs.detectors import (
+from ..detectors import (
     activate_detector,
     deactivate_detector,
     activate_detector_set,
 )
-from sst_funcs.utils import merge_func
+from ..utils import merge_func
 from .plan_stubs import set_exposure
 from bluesky.plan_stubs import mv
 from .preprocessors import wrap_metadata
-from sst_funcs.plans.groups import repeat
-from sst_funcs.settings import settings
+from ..plans.groups import repeat
+from ..settings import settings
 
 
 def _beamline_setup(func):

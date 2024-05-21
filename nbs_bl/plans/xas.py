@@ -1,10 +1,10 @@
-from sst_funcs.settings import settings
-from sst_funcs.plans.scans import gscan
-from sst_funcs.plans.scan_decorators import _wrap_xas
-from sst_funcs.utils import merge_func
-from sst_funcs.plans.preprocessors import wrap_metadata
-from sst_funcs.help import add_to_scan_list, add_to_xas_list
-from sst_funcs.globalVars import GLOBAL_ENERGY, GLOBAL_XAS_PLANS
+from ..settings import settings
+from ..plans.scans import gscan
+from ..plans.scan_decorators import _wrap_xas
+from ..utils import merge_func
+from ..plans.preprocessors import wrap_metadata
+from ..help import add_to_scan_list, add_to_xas_list
+from ..globalVars import GLOBAL_ENERGY, GLOBAL_XAS_PLANS
 from os.path import join
 
 try:

@@ -1,6 +1,6 @@
 from sst_base.manipulator import Manipulator4AxBase, Manipulator1AxBase
 from sst_base.motors import FlyableMotor, PrettyMotor
-from sst_funcs.geometry.linalg import vec
+from .geometry.linalg import vec
 from .motors import add_motor
 from ophyd import Component as Cpt
 

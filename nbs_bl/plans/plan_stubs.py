@@ -1,5 +1,5 @@
-from sst_funcs.globalVars import GLOBAL_ACTIVE_DETECTORS
-from sst_funcs.help import add_to_plan_list
+from ..globalVars import GLOBAL_ACTIVE_DETECTORS
+from ..help import add_to_plan_list
 import warnings
 from bluesky import Msg
 from bluesky.plan_stubs import rd, sleep

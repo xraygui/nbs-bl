@@ -1,4 +1,4 @@
-from sst_funcs.printing import boxed_text
+from .printing import boxed_text
 from .globalVars import GLOBAL_SCAN_LIST, GLOBAL_PLAN_LIST
 GLOBAL_HELP_DICTIONARY = {'functions': {}, 'plans': {}, 'scans': {}, 'xas': {}}
 GLOBAL_IMPORT_DICTIONARY = {}

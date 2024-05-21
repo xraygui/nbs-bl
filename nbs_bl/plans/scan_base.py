@@ -1,5 +1,5 @@
-from sst_funcs.utils import merge_func
-from sst_funcs.plans.preprocessors import wrap_metadata
+from ..utils import merge_func
+from ..plans.preprocessors import wrap_metadata
 
 
 def _make_gscan_points(*args, shift=0):
