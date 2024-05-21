@@ -9,6 +9,6 @@ setup(
     description="Beamline Framework",
     install_requires=requirements,
     use_scm_version=True,
-    name="nbs_bl",
+    name="nbs-bl",
     packages=find_packages(),
 )
