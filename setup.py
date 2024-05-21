@@ -4,11 +4,11 @@ with open("requirements.txt") as f:
     requirements = f.read().split()
 
 setup(
-    author="NIST Staff",
-    author_email=None,
-    description="Beamline utility functions",
+    author="Charles Titus",
+    author_email="ctitus@bnl.gov",
+    description="Beamline Framework",
     install_requires=requirements,
     use_scm_version=True,
-    name="sst_funcs",
+    name="nbs_bl",
     packages=find_packages(),
 )
