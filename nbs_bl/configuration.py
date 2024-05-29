@@ -23,7 +23,7 @@ from .queueserver import request_update, get_status
 from nbs_core.beamline import BeamlineModel
 from nbs_core.utils import iterfy
 
-
+    
 def get_startup_dir():
     """
     Get the IPython startup directory.
@@ -121,6 +121,7 @@ def configure_beamline(beamline_file, devices, groups, roles, namespace=None):
     configure_detectors(
         groups.get("detectors", {}), beamline_config.get("detectors", {})
     )
+    _configure_base(groups.get("source", {}), beamline_config.get("source", {}), should_add_to_baseline=True)
     configure_motors(groups.get("motors", {}), beamline_config.get("motors", {}))
     configure_shutters(groups.get("shutters", {}), beamline_config.get("shutters", {}))
     configure_mirrors(groups.get("mirrors", {}), beamline_config.get("mirrors", {}))
@@ -128,13 +129,14 @@ def configure_beamline(beamline_file, devices, groups, roles, namespace=None):
         groups.get("gatevalves", {}), beamline_config.get("gatevalves", {})
     )
     configure_energy(roles["energy"], roles["slits"])
-    configure_manipulators(beamline_config.get("manipulators", {}))
+    configure_manipulators(groups.get("manipulators", {}), beamline_config.get("manipulators", {}), roles.get("primary_manipulator", None))
 
 
 def _configure_base(
     devices, config_dict, add_device=None, should_add_to_baseline=False
 ):
     configuration = config_dict.get("configuration", {})
+    should_add_to_baseline = configuration.pop("baseline", should_add_to_baseline)
     for device in devices:
         dev = GLOBAL_HARDWARE[device]
         if add_device is not None:
@@ -175,10 +177,18 @@ def configure_mirrors(devices, config_dict):
 
 
 def get_device(device_name, get_subdevice=True):
+    """
+    If get_subdevice, follow dotted device names and return the deepest device.
+    If False, follow the parents and return the overall parent device
+    """
     device_parts = device_name.split(".")
     device = GLOBAL_HARDWARE[device_parts[0]]
-    for subdev in device_parts[1:]:
-        device = getattr(device, subdev)
+    if get_subdevice:
+        for subdev in device_parts[1:]:
+            device = getattr(device, subdev)
+    else:
+        while device.parent is not None:
+            device = device.parent
     return device
 
 
@@ -192,6 +202,7 @@ def add_to_baseline(device_or_name, only_subdevice=False):
 
 
 def configure_energy(energy_key, slit_key):
+    print(f"energy key: {energy_key}")
     GLOBAL_ENERGY["energy"] = get_device(energy_key)
     add_to_baseline(energy_key)
 
@@ -199,9 +210,9 @@ def configure_energy(energy_key, slit_key):
     add_to_baseline(slit_key)
 
 
-def configure_manipulators(config_dict):
-    for name, device_key in config_dict.items():
-        GLOBAL_MANIPULATOR[name] = device_key
+def configure_manipulators(devices, config_dict, primary_manipulator):
+    _configure_base(devices, config_dict, should_add_to_baseline=True)
+    GLOBAL_MANIPULATOR["primary"] = get_device(primary_manipulator)
 
 
 def configure_modules():
