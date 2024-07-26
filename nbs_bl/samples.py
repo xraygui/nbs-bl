@@ -34,6 +34,7 @@ def print_selected_sample():
 def add_sample_to_globals(
     sample_id, name, position, side, thickness, description=None, **kwargs
 ):
+    sample_id = str(sample_id)
     GLOBAL_SAMPLES[sample_id] = {
         "name": name,
         "position": position,

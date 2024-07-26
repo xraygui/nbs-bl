@@ -28,11 +28,11 @@ _scan_list = [
 ]
 
 for _scan in _scan_list:
-    newscan = nbs_builtin_scan_wrapper(_scan)
-    fixedname = f"nbs_{_scan.__name__}"
-    newscan.__name__ = fixedname
-    globals()[fixedname] = newscan
-    add_to_scan_list(newscan)
+    _newscan = nbs_builtin_scan_wrapper(_scan)
+    _fixedname = f"nbs_{_scan.__name__}"
+    _newscan.__name__ = _fixedname
+    globals()[_fixedname] = _newscan
+    add_to_scan_list(_newscan)
 
 
 @add_to_scan_list

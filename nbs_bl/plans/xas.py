@@ -26,7 +26,7 @@ def _xas_factory(energy_grid, edge, name):
             Arguments to be passed to tes_gscan
 
         """
-        yield from gscan(GLOBAL_ENERGY["energy"], *energy_grid, **kwargs)
+        yield from nbs_gscan(GLOBAL_ENERGY["energy"], *energy_grid, **kwargs)
 
     d = f"Perform an in-place xas scan for {edge} with energy pattern {energy_grid} \n"
     inner.__doc__ = d + inner.__doc__
