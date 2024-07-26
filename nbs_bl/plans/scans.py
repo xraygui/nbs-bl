@@ -1,4 +1,4 @@
-from .scan_decorators import nbs_builtin_scan_wrapper, nbs_add_bl_prefix
+from .scan_decorators import nbs_builtin_scan_wrapper
 from .scan_base import _make_gscan_points
 from ..help import add_to_scan_list
 from ..utils import merge_func
@@ -30,6 +30,7 @@ _scan_list = [
 for _scan in _scan_list:
     newscan = nbs_builtin_scan_wrapper(_scan)
     fixedname = f"nbs_{_scan.__name__}"
+    newscan.__name__ = fixedname
     globals()[fixedname] = newscan
     add_to_scan_list(newscan)
 
