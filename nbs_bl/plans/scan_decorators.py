@@ -48,7 +48,7 @@ def _wrap_xas(element):
     return decorator
 
 
-def _sst_setup_detectors(func):
+def _nbs_setup_detectors(func):
     @merge_func(func, ["detectors"])
     def _inner(*args, extra_dets=[], dwell=None, **kwargs):
         """
@@ -74,7 +74,7 @@ def _sst_setup_detectors(func):
     return _inner
 
 
-def _sst_add_plot_md(func):
+def _nbs_add_plot_md(func):
     @merge_func(func)
     def _inner(*args, md=None, plot_detectors=None, **kwargs):
         md = md or {}
@@ -96,7 +96,7 @@ def _sst_add_plot_md(func):
     return _inner
 
 
-def _sst_add_sample_md(func):
+def _nbs_add_sample_md(func):
     @merge_func(func)
     def _inner(*args, md=None, **kwargs):
         """
@@ -115,7 +115,7 @@ def _sst_add_sample_md(func):
     return _inner
 
 
-def _sst_add_comment(func):
+def _nbs_add_comment(func):
     @merge_func(func)
     def _inner(*args, md=None, comment=None, group_name=None, **kwargs):
         """
@@ -139,13 +139,13 @@ def _sst_add_comment(func):
     return _inner
 
 
-def sst_base_scan_decorator(func):
+def nbs_base_scan_decorator(func):
     @repeat
     @_beamline_setup
-    @_sst_setup_detectors
-    @_sst_add_sample_md
-    @_sst_add_plot_md
-    @_sst_add_comment
+    @_nbs_setup_detectors
+    @_nbs_add_sample_md
+    @_nbs_add_plot_md
+    @_nbs_add_comment
     @merge_func(func)
     def _inner(*args, **kwargs):
         return (yield from func(*args, **kwargs))
@@ -153,7 +153,7 @@ def sst_base_scan_decorator(func):
     return _inner
 
 
-def sst_add_bl_prefix(func):
+def nbs_add_bl_prefix(func):
     base_name = func.__name__
     plan_name = f"{settings.beamline_prefix}_{base_name}"
     func.__name__ = plan_name
@@ -164,19 +164,18 @@ def wrap_plan_name(func):
     return wrap_metadata({"plan_name": func.__name__})(func)
 
 
-def sst_builtin_scan_wrapper(func):
+def nbs_builtin_scan_wrapper(func):
     """
-    Designed to wrap bluesky built-in scans to produce an sst version
+    Designed to wrap bluesky built-in scans to produce an nbs version
     """
 
     @wrap_plan_name
-    @sst_add_bl_prefix
-    @sst_base_scan_decorator
+    @nbs_base_scan_decorator
     @merge_func(func)
     def _inner(*args, **kwargs):
         return (yield from func(*args, **kwargs))
 
-    # _inner = wrap_metadata({"plan_name": plan_name})(sst_base_scan_decorator(func))
+    # _inner = wrap_metadata({"plan_name": plan_name})(nbs_base_scan_decorator(func))
 
     d = f"""Modifies {func.__name__} to automatically fill
 dets with global active beamline detectors.

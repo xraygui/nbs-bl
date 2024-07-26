@@ -1,5 +1,5 @@
 from ..settings import settings
-from ..plans.scans import gscan
+from ..plans.scans import nbs_gscan
 from ..plans.scan_decorators import _wrap_xas
 from ..utils import merge_func
 from ..plans.preprocessors import wrap_metadata
@@ -16,7 +16,7 @@ except ModuleNotFoundError:
 def _xas_factory(energy_grid, edge, name):
     @_wrap_xas(edge)
     @wrap_metadata({"plan_name": name})
-    @merge_func(gscan, omit_params=["motor", "args"])
+    @merge_func(nbs_gscan, omit_params=["motor", "args"])
     def inner(**kwargs):
         """Parameters
         ----------
