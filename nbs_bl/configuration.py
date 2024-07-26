@@ -23,7 +23,7 @@ from .queueserver import request_update, get_status
 from nbs_core.beamline import BeamlineModel
 from nbs_core.utils import iterfy
 
-    
+
 def get_startup_dir():
     """
     Get the IPython startup directory.
@@ -121,7 +121,11 @@ def configure_beamline(beamline_file, devices, groups, roles, namespace=None):
     configure_detectors(
         groups.get("detectors", {}), beamline_config.get("detectors", {})
     )
-    _configure_base(groups.get("source", {}), beamline_config.get("source", {}), should_add_to_baseline=True)
+    _configure_base(
+        groups.get("source", {}),
+        beamline_config.get("source", {}),
+        should_add_to_baseline=True,
+    )
     configure_motors(groups.get("motors", {}), beamline_config.get("motors", {}))
     configure_shutters(groups.get("shutters", {}), beamline_config.get("shutters", {}))
     configure_mirrors(groups.get("mirrors", {}), beamline_config.get("mirrors", {}))
@@ -129,7 +133,11 @@ def configure_beamline(beamline_file, devices, groups, roles, namespace=None):
         groups.get("gatevalves", {}), beamline_config.get("gatevalves", {})
     )
     configure_energy(roles["energy"], roles["slits"])
-    configure_manipulators(groups.get("manipulators", {}), beamline_config.get("manipulators", {}), roles.get("primary_manipulator", None))
+    configure_manipulators(
+        groups.get("manipulators", {}),
+        beamline_config.get("manipulators", {}),
+        roles.get("primary_manipulator", None),
+    )
 
 
 def _configure_base(
@@ -212,7 +220,10 @@ def configure_energy(energy_key, slit_key):
 
 def configure_manipulators(devices, config_dict, primary_manipulator):
     _configure_base(devices, config_dict, should_add_to_baseline=True)
-    GLOBAL_MANIPULATOR["primary"] = get_device(primary_manipulator)
+    if primary_manipulator is not None:
+        GLOBAL_MANIPULATOR["primary"] = get_device(primary_manipulator)
+    else:
+        GLOBAL_MANIPULATOR["primary"] = None
 
 
 def configure_modules():
