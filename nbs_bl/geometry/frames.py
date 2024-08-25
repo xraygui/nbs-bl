@@ -490,3 +490,45 @@ def make_geometry(*args, **kwargs):
             return Panel(*args, **kwargs)
         else:
             return Frame(*args, **kwargs)
+
+
+def make_regular_polygon(width, height, nsides, points=None, parent=None, invert=True):
+    geometry = []
+    interior_angle = deg_to_rad(360.0 / nsides)
+    if invert:
+        az = -1
+    else:
+        az = 1
+
+    if points is None:
+        y = -1 * az * width / 2.0
+        x = width / (2.0 * np.tan(interior_angle / 2.0))
+        if invert:
+            z = height
+        else:
+            z = 0
+        p1 = vec(x, y, z)
+        p2 = p1 + vec(0, 0, az)
+        p3 = p1 + vec(0, az, 0)
+    else:
+        p1, p2, p3 = points
+
+    def _newSideFromSide(side):
+        prev_edges = side.real_edges(vec(0, 0, 0), 0)
+        new_vector = vec(np.cos(np.pi - interior_angle), 0, -np.sin(np.pi - interior_angle))
+        p1 = prev_edges[1]
+        p2 = prev_edges[2]
+        p3 = side.frame_to_global(new_vector + side.edges[1], r=0, rotation="global")
+        return Panel(p1, p2, p3, width=width, height=height, parent=parent)
+
+    current_side = Panel(p1, p2, p3, width=width, height=height, parent=parent)
+    geometry.append(current_side)
+    new_sides = []
+    for n in range(1, nsides):
+        new_side = _newSideFromSide(current_side)
+        new_sides.append(new_side)
+        current_side = new_side
+    # It is unfortunately easier to generate sides in reverse order
+    # due to the coordinate system, so we must reverse them.
+    geometry += new_sides[::-1]
+    return geometry
