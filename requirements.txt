@@ -5,3 +5,4 @@ numpy
 ansiwrap
 ipython
 toml
+nbs-core
