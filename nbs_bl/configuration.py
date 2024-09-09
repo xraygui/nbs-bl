@@ -46,7 +46,7 @@ def load_and_configure_everything(startup_dir=None):
     if startup_dir is None:
         startup_dir = get_startup_dir()
     settings.startup_dir = startup_dir
-    settings_file = join(startup_dir, "settings.toml")
+    settings_file = join(startup_dir, "beamline.toml")
     load_settings(settings_file)
     object_file = join(startup_dir, settings.device_filename)
     beamline_file = join(startup_dir, settings.beamline_filename)
@@ -81,7 +81,7 @@ def load_settings(settings_file):
         return
     with open(settings_file, "rb") as f:
         settings_dict = tomllib.load(f)
-    for key in settings_dict:
+    for key in settings_dict.get("settings"):
         setattr(settings, key, settings_dict[key])
 
 
