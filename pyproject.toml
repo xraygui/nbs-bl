@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nbs-bl"
+authors = [
+    {name = "Charles Titus", email = "ctitus@bnl.gov"},
+]
+description = "Beamline Framework"
+dynamic = ["version", "dependencies"]
+
+[tool.setuptools]
+packages = ["nbs_bl"]
+
+[tool.setuptools_scm]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
