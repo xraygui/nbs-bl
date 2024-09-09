@@ -4,7 +4,7 @@ from ..plans.scan_decorators import _wrap_xas
 from ..utils import merge_func
 from ..plans.preprocessors import wrap_metadata
 from ..help import add_to_scan_list, add_to_xas_list
-from ..globalVars import GLOBAL_ENERGY, GLOBAL_XAS_PLANS
+from ..globalVars import GLOBAL_BEAMLINE, GLOBAL_XAS_PLANS
 from os.path import join
 
 try:
@@ -26,7 +26,7 @@ def _xas_factory(energy_grid, edge, name):
             Arguments to be passed to tes_gscan
 
         """
-        yield from nbs_gscan(GLOBAL_ENERGY["energy"], *energy_grid, **kwargs)
+        yield from nbs_gscan(GLOBAL_BEAMLINE.energy, *energy_grid, **kwargs)
 
     d = f"Perform an in-place xas scan for {edge} with energy pattern {energy_grid} \n"
     inner.__doc__ = d + inner.__doc__

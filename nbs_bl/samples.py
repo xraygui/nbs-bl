@@ -31,6 +31,7 @@ def print_selected_sample():
         print(f"No sample currently selected")
 
 
+@add_to_func_list
 def add_sample_to_globals(
     sample_id, name, position, side, thickness, description=None, **kwargs
 ):

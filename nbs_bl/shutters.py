@@ -1,45 +1,39 @@
-from .globalVars import GLOBAL_SHUTTERS, GLOBAL_DEFAULT_SHUTTER, GLOBAL_HARDWARE
-from .help import add_to_plan_list
+from .globalVars import GLOBAL_BEAMLINE
+from .help import add_to_plan_list, add_to_func_list
 from bluesky.plan_stubs import rd
 
 
 @add_to_plan_list
 def open_shutter():
     """Opens all default shutters, does not check any other shutters!"""
-    for s in GLOBAL_DEFAULT_SHUTTER:
-        shutter = GLOBAL_SHUTTERS[s]
+    shutter = GLOBAL_BEAMLINE.default_shutter
+    if shutter is not None:
         yield from shutter.open()
 
 
 @add_to_plan_list
 def close_shutter():
     """Closes all default shutters"""
-    for s in GLOBAL_DEFAULT_SHUTTER:
-        shutter = GLOBAL_SHUTTERS[s]
+    shutter = GLOBAL_BEAMLINE.default_shutter
+    if shutter is not None:
         yield from shutter.close()
 
 
 @add_to_plan_list
 def is_shutter_open():
     states = []
-    for s in GLOBAL_SHUTTERS.values():
+    for s in GLOBAL_BEAMLINE.shutters.values():
         state = yield from rd(s.state)
         states.append(state == s.openval)
     return all(states)
 
 
-def are_shutters_open():
-    states = []
-    for s in GLOBAL_SHUTTERS.values():
-        state = yield from rd(s.state)
-        states.append(state == s.openval)
-    return all(states)
+@add_to_func_list
+def list_shutters():
+    def textFunction(key, device):
+        name = device.name
+        state = "Open" if device.state.get() == device.openval else "Closed"
+        text = f"{key}: {name}, {state}"
+        return text
 
-
-def add_shutter(shutter, name=None, default=False, **kwargs):
-    if name is None:
-        name = shutter.name
-    GLOBAL_SHUTTERS[name] = shutter
-    if default:
-        GLOBAL_DEFAULT_SHUTTER.append(name)
-    return name
+    GLOBAL_BEAMLINE.shutters.describe(textFunction=textFunction)

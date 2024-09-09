@@ -5,22 +5,18 @@ try:
     import tomllib
 except ModuleNotFoundError:
     import tomli as tomllib
-from .hw import _load_hardware, _alias_device
-from .globalVars import (
-    GLOBAL_HARDWARE,
-    GLOBAL_SUPPLEMENTAL_DATA,
-    GLOBAL_ALIGNMENT_DETECTOR,
-    GLOBAL_ENERGY,
-    GLOBAL_MANIPULATOR,
-)
+from .hw import _load_hardware
+from .globalVars import GLOBAL_BEAMLINE
+
+# from .globalVars import (
+#     GLOBAL_HARDWARE,
+#     GLOBAL_ALIGNMENT_DETECTOR,
+#     GLOBAL_ENERGY,
+#     GLOBAL_MANIPULATOR,
+#     GLOBAL_BEAMLINE,
+# )
 from .settings import settings
-from .detectors import add_detector, add_detector_set
-from .motors import add_motor
-from .shutters import add_shutter
-from .gatevalves import add_valve
-from .mirrors import add_mirror
 from .queueserver import request_update, get_status
-from nbs_core.beamline import BeamlineModel
 from nbs_core.utils import iterfy
 
 
@@ -53,12 +49,15 @@ def load_and_configure_everything(startup_dir=None):
     settings_file = join(startup_dir, "settings.toml")
     load_settings(settings_file)
     object_file = join(startup_dir, settings.device_filename)
+    beamline_file = join(startup_dir, settings.beamline_filename)
+    with open(beamline_file, "rb") as f:
+        beamline_config = tomllib.load(f)
     ip = get_ipython()
     ip.user_ns["get_status"] = get_status
     ip.user_ns["request_update"] = request_update
     devices, groups, roles = _load_hardware(object_file, ip.user_ns)
-    beamline_file = join(startup_dir, settings.beamline_filename)
-    configure_beamline(beamline_file, devices, groups, roles)
+    GLOBAL_BEAMLINE.load_devices(devices, groups, roles, beamline_config)
+    # configure_beamline(beamline_file, devices, groups, roles)
     configure_modules()
 
 

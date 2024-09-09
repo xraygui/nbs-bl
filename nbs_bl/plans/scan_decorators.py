@@ -1,9 +1,10 @@
 from functools import wraps
 from ..globalVars import (
-    GLOBAL_ACTIVE_DETECTORS,
-    GLOBAL_PLOT_DETECTORS,
+    # GLOBAL_ACTIVE_DETECTORS,
+    # GLOBAL_PLOT_DETECTORS,
     GLOBAL_SELECTED,
-    GLOBAL_ENERGY,
+    # GLOBAL_ENERGY,
+    GLOBAL_BEAMLINE,
 )
 from ..detectors import (
     activate_detector,
@@ -33,9 +34,9 @@ def _beamline_setup(func):
         # if sample is not None:
         #    yield from sample_move(0, 0, 45, sample)
         if eslit is not None:
-            yield from mv(GLOBAL_ENERGY["slit"], eslit)
+            yield from mv(GLOBAL_BEAMLINE.slits, eslit)
         if energy is not None:
-            yield from mv(GLOBAL_ENERGY["energy"], energy)
+            yield from mv(GLOBAL_BEAMLINE.energy, energy)
         return (yield from func(*args, **kwargs))
 
     return inner
@@ -64,7 +65,7 @@ def _nbs_setup_detectors(func):
 
         yield from set_exposure(dwell)
 
-        ret = yield from func(GLOBAL_ACTIVE_DETECTORS, *args, **kwargs)
+        ret = yield from func(GLOBAL_BEAMLINE.detectors.active, *args, **kwargs)
 
         for det in extra_dets:
             deactivate_detector(det)
@@ -81,14 +82,7 @@ def _nbs_add_plot_md(func):
         plot_hints = {}
         if plot_detectors is not None:
             activate_detector_set(plot_detectors)
-        for role, detlist in GLOBAL_PLOT_DETECTORS.items():
-            plot_hints[role] = []
-            for det in detlist:
-                if det in GLOBAL_ACTIVE_DETECTORS:
-                    if hasattr(det, "get_plot_hints"):
-                        plot_hints[role] += det.get_plot_hints()
-                    else:
-                        plot_hints[role].append(det.name)
+        plot_hints = GLOBAL_BEAMLINE.detectors.get_plot_hints()
         _md = {"plot_hints": plot_hints}
         _md.update(md)
         return (yield from func(*args, md=_md, **kwargs))

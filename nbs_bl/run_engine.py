@@ -1,6 +1,6 @@
 import asyncio
 from bluesky import RunEngine
-from .globalVars import GLOBAL_SUPPLEMENTAL_DATA
+from .globalVars import GLOBAL_BEAMLINE
 from bluesky_queueserver import is_re_worker_active
 
 
@@ -25,7 +25,7 @@ def load_RE_commands(engine):
 
 def setup_run_engine(RE):
     load_RE_commands(RE)
-    RE.preprocessors.append(GLOBAL_SUPPLEMENTAL_DATA)
+    RE.preprocessors.append(GLOBAL_BEAMLINE.supplemental_data)
 
 
 def create_run_engine(setup=True):

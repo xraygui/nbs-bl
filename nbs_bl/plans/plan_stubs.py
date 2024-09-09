@@ -1,4 +1,4 @@
-from ..globalVars import GLOBAL_ACTIVE_DETECTORS
+from ..globalVars import GLOBAL_BEAMLINE
 from ..help import add_to_plan_list
 import warnings
 from bluesky import Msg
@@ -19,7 +19,7 @@ def set_exposure(time=None, extra_dets=[]):
     global GLOBAL_EXPOSURE_TIME
     if time is not None:
         GLOBAL_EXPOSURE_TIME = time
-    for d in GLOBAL_ACTIVE_DETECTORS:
+    for d in GLOBAL_BEAMLINE.detectors.active:
         try:
             if hasattr(d, "set_exposure"):
                 yield from call_obj(d, "set_exposure", GLOBAL_EXPOSURE_TIME)
@@ -50,7 +50,7 @@ def wait_for_signal_equals(sig, val, timeout=None, sleep_time=10):
         else:
             yield from sleep(sleep_time)
 
-         
+
 def wait_for_signal_above(sig, val, timeout=None, sleep_time=10):
     start_time = time.time()
     while True:
