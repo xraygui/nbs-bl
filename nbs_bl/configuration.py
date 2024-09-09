@@ -80,8 +80,9 @@ def load_settings(settings_file):
         print("No settings found, using defaults")
         return
     with open(settings_file, "rb") as f:
-        settings_dict = tomllib.load(f)
-    for key in settings_dict.get("settings"):
+        config = tomllib.load(f)
+    settings_dict = config.get("settings", {})
+    for key in settings_dict:
         setattr(settings, key, settings_dict[key])
 
 
