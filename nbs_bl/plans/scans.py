@@ -42,7 +42,7 @@ for _scan in _scan_list:
     exclude_wrapper_args=False,
     use_func_name=False,
 )
-def nbs_gscan(motor, *args, extra_dets=[], shift=0, **kwargs):
+def nbs_gscan(motor, *args, extra_dets=[], shift: float = 0, **kwargs):
     """A variable step scan of a motor, the TES detector, and the basic beamline detectors.
 
     Other detectors may be added via extra_dets

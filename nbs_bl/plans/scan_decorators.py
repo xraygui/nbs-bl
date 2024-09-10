@@ -17,11 +17,18 @@ from bluesky.plan_stubs import mv
 from .preprocessors import wrap_metadata
 from ..plans.groups import repeat
 from ..settings import settings
+from typing import Optional
 
 
 def _beamline_setup(func):
     @merge_func(func)
-    def inner(*args, sample=None, eslit=None, energy=None, **kwargs):
+    def inner(
+        *args,
+        sample=None,
+        eslit: Optional[float] = None,
+        energy: Optional[float] = None,
+        **kwargs,
+    ):
         """
         Parameters
         ----------
@@ -51,7 +58,7 @@ def _wrap_xas(element):
 
 def _nbs_setup_detectors(func):
     @merge_func(func, ["detectors"])
-    def _inner(*args, extra_dets=[], dwell=None, **kwargs):
+    def _inner(*args, extra_dets=[], dwell: Optional[float] = None, **kwargs):
         """
         Parameters
         ----------
@@ -77,7 +84,7 @@ def _nbs_setup_detectors(func):
 
 def _nbs_add_plot_md(func):
     @merge_func(func)
-    def _inner(*args, md=None, plot_detectors=None, **kwargs):
+    def _inner(*args, md: Optional[dict] = None, plot_detectors: list = None, **kwargs):
         md = md or {}
         plot_hints = {}
         if plot_detectors is not None:
@@ -92,7 +99,7 @@ def _nbs_add_plot_md(func):
 
 def _nbs_add_sample_md(func):
     @merge_func(func)
-    def _inner(*args, md=None, **kwargs):
+    def _inner(*args, md: Optional[dict] = None, **kwargs):
         """
         Sample information is automatically added to the run md
         """
@@ -111,7 +118,13 @@ def _nbs_add_sample_md(func):
 
 def _nbs_add_comment(func):
     @merge_func(func)
-    def _inner(*args, md=None, comment=None, group_name=None, **kwargs):
+    def _inner(
+        *args,
+        md: Optional[dict] = None,
+        comment: Optional[str] = None,
+        group_name: Optional[str] = None,
+        **kwargs,
+    ):
         """
         Parameters
         ----------

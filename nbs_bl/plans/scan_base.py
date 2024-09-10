@@ -2,7 +2,7 @@ from ..utils import merge_func
 from ..plans.preprocessors import wrap_metadata
 
 
-def _make_gscan_points(*args, shift=0):
+def _make_gscan_points(*args, shift: float = 0):
     if len(args) < 3:
         raise TypeError(
             f"gscan requires at least estart, estop, and delta, received {args}"
@@ -20,5 +20,3 @@ def _make_gscan_points(*args, shift=0):
             nextpoint += step
         points.append(stop + shift)
     return points
-
-

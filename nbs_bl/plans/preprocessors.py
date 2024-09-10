@@ -6,6 +6,7 @@ from ..utils import merge_func
 from copy import deepcopy
 import inspect
 import uuid
+from typing import Optional
 
 
 def sanitize(arg):
@@ -27,7 +28,7 @@ def sanitize(arg):
 
 def plan_md_decorator(plan_function):
     @wraps(plan_function)
-    def _inner(*args, md=None, plan_level=0, **kwargs):
+    def _inner(*args, md: Optional[dict] = None, plan_level=0, **kwargs):
         plan_name = plan_function.__name__
         md = md or {}
         _md = {}
@@ -41,35 +42,38 @@ def plan_md_decorator(plan_function):
             arguments[n] = sanitize(a)
         for k, v in kwargs.items():
             arguments[k] = sanitize(v)
-        if 'md' in arguments:
-            del arguments['md']
+        if "md" in arguments:
+            del arguments["md"]
 
-        _md['plan_history'] = []
+        _md["plan_history"] = []
         if plan_level == 0:
-            _md['master_plan'] = plan_name
-            _md['batch_uid'] = str(uuid.uuid4())
+            _md["master_plan"] = plan_name
+            _md["batch_uid"] = str(uuid.uuid4())
         _md.update(deepcopy(md))
-        _md['plan_history'].append({"plan_name": plan_name,
-                                    "arguments": arguments,
-                                    "plan_level": plan_level})
-        return plan_function(*args, md=_md, plan_level=plan_level+1, **kwargs)
+        _md["plan_history"].append(
+            {"plan_name": plan_name, "arguments": arguments, "plan_level": plan_level}
+        )
+        return plan_function(*args, md=_md, plan_level=plan_level + 1, **kwargs)
+
     return _inner
 
 
 def wrap_metadata(param):
     def decorator(func):
         @merge_func(func)
-        def inner(*args, md=None, **kwargs):
+        def inner(*args, md: Optional[dict] = None, **kwargs):
             md = md or {}
             _md = {}
             _md.update(param)
             _md.update(md)
             return (yield from func(*args, md=_md, **kwargs))
+
         return inner
+
     return decorator
 
 
-def run_return_wrapper(plan, *, md=None):
+def run_return_wrapper(plan, *, md: Optional[dict] = None):
     """Enclose in 'open_run' and 'close_run' messages.
 
     Parameters
@@ -85,11 +89,13 @@ def run_return_wrapper(plan, *, md=None):
         if isinstance(e, RunEngineControlException):
             yield from close_run(exit_status=e.exit_status)
         else:
-            yield from close_run(exit_status='fail', reason=str(e))
+            yield from close_run(exit_status="fail", reason=str(e))
 
-    return (yield from contingency_wrapper(plan,
-                                           except_plan=except_plan,
-                                           else_plan=close_run))
+    return (
+        yield from contingency_wrapper(
+            plan, except_plan=except_plan, else_plan=close_run
+        )
+    )
 
 
 run_return_decorator = make_decorator(run_return_wrapper)

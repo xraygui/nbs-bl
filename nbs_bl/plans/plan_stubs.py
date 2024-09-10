@@ -4,6 +4,7 @@ import warnings
 from bluesky import Msg
 from bluesky.plan_stubs import rd, sleep
 import time
+from typing import Optional
 
 GLOBAL_EXPOSURE_TIME = 1.0
 
@@ -14,7 +15,7 @@ def call_obj(obj, method, *args, **kwargs):
 
 
 @add_to_plan_list
-def set_exposure(time=None, extra_dets=[]):
+def set_exposure(time: Optional[float] = None, extra_dets=[]):
     """Sets the exposure time for all active detectors"""
     global GLOBAL_EXPOSURE_TIME
     if time is not None:
@@ -27,7 +28,9 @@ def set_exposure(time=None, extra_dets=[]):
             warnings.warn(repr(ex), RuntimeWarning)
 
 
-def wait_for_signal_below(sig, val, timeout=None, sleep_time=10):
+def wait_for_signal_below(
+    sig, val, timeout: Optional[float] = None, sleep_time: float = 10
+):
     start_time = time.time()
     while True:
         if timeout is not None and (time.time() - start_time > timeout):
@@ -39,7 +42,9 @@ def wait_for_signal_below(sig, val, timeout=None, sleep_time=10):
             yield from sleep(sleep_time)
 
 
-def wait_for_signal_equals(sig, val, timeout=None, sleep_time=10):
+def wait_for_signal_equals(
+    sig, val, timeout: Optional[float] = None, sleep_time: float = 10
+):
     start_time = time.time()
     while True:
         if timeout is not None and (time.time() - start_time > timeout):
@@ -51,7 +56,9 @@ def wait_for_signal_equals(sig, val, timeout=None, sleep_time=10):
             yield from sleep(sleep_time)
 
 
-def wait_for_signal_above(sig, val, timeout=None, sleep_time=10):
+def wait_for_signal_above(
+    sig, val, timeout: Optional[float] = None, sleep_time: float = 10
+):
     start_time = time.time()
     while True:
         if timeout is not None and (time.time() - start_time > timeout):

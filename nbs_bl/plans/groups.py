@@ -6,7 +6,7 @@ from .preprocessors import wrap_metadata, merge_func
 
 def repeat(func):
     @merge_func(func)
-    def inner(*args, repeat=1, **kwargs):
+    def inner(*args, repeat: int = 1, **kwargs):
         if repeat > 1:
             repeat_uid = str(uuid.uuid4())
             return_list = []
@@ -17,6 +17,7 @@ def repeat(func):
             return return_list
         else:
             return (yield from func(*args, **kwargs))
+
     return inner
 
 
@@ -26,7 +27,9 @@ def group(groupname):
         def inner(*args, **kwargs):
             md = {"group_md": {"uid": str(uuid.uuid4()), "name": groupname}}
             return (yield from inject_md_wrapper(func(*args, **kwargs), md))
+
         return inner
+
     return decorator
 
 
@@ -42,4 +45,5 @@ def simple_1d_sequence_factory(length, label, device=None):
                 plan, {"sequence": {**sq, "index": next(index), "value": value}}
             )
         )
+
     return add_to_sequence
