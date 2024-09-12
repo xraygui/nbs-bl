@@ -6,7 +6,7 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 from .hw import _load_hardware
-from .globalVars import GLOBAL_BEAMLINE
+from .globalVars import GLOBAL_BEAMLINE, GLOBAL_SETTINGS
 
 # from .globalVars import (
 #     GLOBAL_HARDWARE,
@@ -15,7 +15,7 @@ from .globalVars import GLOBAL_BEAMLINE
 #     GLOBAL_MANIPULATOR,
 #     GLOBAL_BEAMLINE,
 # )
-from .settings import settings
+from .settings import load_settings
 from .queueserver import request_update, get_status
 from nbs_core.utils import iterfy
 
@@ -45,11 +45,11 @@ def load_and_configure_everything(startup_dir=None):
     """
     if startup_dir is None:
         startup_dir = get_startup_dir()
-    settings.startup_dir = startup_dir
+    GLOBAL_SETTINGS["startup_dir"] = startup_dir
     settings_file = join(startup_dir, "beamline.toml")
     load_settings(settings_file)
-    object_file = join(startup_dir, settings.device_filename)
-    beamline_file = join(startup_dir, settings.beamline_filename)
+    object_file = join(startup_dir, GLOBAL_SETTINGS["device_filename"])
+    beamline_file = join(startup_dir, GLOBAL_SETTINGS["beamline_filename"])
     with open(beamline_file, "rb") as f:
         beamline_config = tomllib.load(f)
     ip = get_ipython()
@@ -59,31 +59,6 @@ def load_and_configure_everything(startup_dir=None):
     GLOBAL_BEAMLINE.load_devices(devices, groups, roles, beamline_config)
     # configure_beamline(beamline_file, devices, groups, roles)
     configure_modules()
-
-
-def load_settings(settings_file):
-    """
-    Load settings from a TOML file.
-
-    Parameters
-    ----------
-    settings_file : str
-        The path to the settings file.
-
-    Returns
-    -------
-    dict
-        The settings loaded from the file.
-    """
-    # Things that are currently in ucal configuration/settings
-    if not exists(settings_file):
-        print("No settings found, using defaults")
-        return
-    with open(settings_file, "rb") as f:
-        config = tomllib.load(f)
-    settings_dict = config.get("settings", {})
-    for key in settings_dict:
-        setattr(settings, key, settings_dict[key])
 
 
 def auto_add_devices_to_groups(beamline_config, devices):
@@ -237,7 +212,7 @@ def configure_modules():
     """
     from importlib.util import find_spec
 
-    modules = settings.modules
+    modules = GLOBAL_SETTINGS["modules"]
     ip = get_ipython()
 
     for module_name in modules:

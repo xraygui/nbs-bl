@@ -31,7 +31,12 @@ def list_detectors(verbose=False):
         If True, print the text description of each detector
 
     """
-    GLOBAL_BEAMLINE.detectors.describe(verbose)
+
+    def textFunction(group, key, device):
+        text = f"{key}: {device.name}; {group.status[key]}"
+        return text
+
+    GLOBAL_BEAMLINE.detectors.describe(verbose, textFunction)
 
 
 @add_to_func_list

@@ -69,7 +69,7 @@ class HardwareGroup:
             if textFunction is None:
                 text.append(f"Key: {key}; Name: {name}")
             else:
-                text.append(textFunction(key, device))
+                text.append(textFunction(self, key, device))
             if verbose:
                 text.append(f"    {self.descriptions[key]}")
         boxed_text(title, text, "white")

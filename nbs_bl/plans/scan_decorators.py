@@ -16,7 +16,8 @@ from .plan_stubs import set_exposure
 from bluesky.plan_stubs import mv
 from .preprocessors import wrap_metadata
 from ..plans.groups import repeat
-from ..settings import settings
+
+# from ..settings import settings
 from typing import Optional
 
 
@@ -160,11 +161,14 @@ def nbs_base_scan_decorator(func):
     return _inner
 
 
+"""
+    This was too clever, and was a mistake
 def nbs_add_bl_prefix(func):
     base_name = func.__name__
     plan_name = f"{settings.beamline_prefix}_{base_name}"
     func.__name__ = plan_name
     return func
+"""
 
 
 def wrap_plan_name(func):

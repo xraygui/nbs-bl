@@ -1,10 +1,10 @@
-from ..settings import settings
+# from ..settings import settings
 from ..plans.scans import nbs_gscan
 from ..plans.scan_decorators import _wrap_xas
 from ..utils import merge_func
 from ..plans.preprocessors import wrap_metadata
 from ..help import add_to_scan_list, add_to_xas_list
-from ..globalVars import GLOBAL_BEAMLINE, GLOBAL_XAS_PLANS
+from ..globalVars import GLOBAL_BEAMLINE, GLOBAL_XAS_PLANS, GLOBAL_SETTINGS as settings
 from os.path import join
 
 try:
@@ -38,11 +38,11 @@ def _xas_factory(energy_grid, edge, name):
     return inner
 
 
-for region_file in settings.regions:
-    with open(join(settings.startup_dir, region_file), "rb") as f:
+for region_file in settings.get("regions", []):
+    with open(join(settings["startup_dir"], region_file), "rb") as f:
         regions = tomllib.load(f)
         for e, region in regions.items():
-            name = f"{settings.beamline_prefix}_{e.lower()}_xas"
+            name = f"nbs_{e.lower()}_xas"
             xas_func = _xas_factory(region, e, name)
             add_to_xas_list(xas_func)
             GLOBAL_XAS_PLANS[e] = name

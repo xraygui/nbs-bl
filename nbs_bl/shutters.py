@@ -33,7 +33,7 @@ def list_shutters():
     def textFunction(key, device):
         name = device.name
         state = "Open" if device.state.get() == device.openval else "Closed"
-        text = f"{key}: {name}, {state}"
+        text = f"{key}: {name}; {state}"
         return text
 
     GLOBAL_BEAMLINE.shutters.describe(textFunction=textFunction)
