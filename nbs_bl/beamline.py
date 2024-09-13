@@ -55,7 +55,7 @@ class BeamlineModel:
                 setattr(self, role, None)
 
     def load_devices(self, devices, groups, roles, config):
-        self.config = config
+        self.config.update(config)
         self.devices.update(devices)
         for groupname, devicelist in groups.items():
             self._configure_group(groupname, devicelist)

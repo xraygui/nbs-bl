@@ -10,12 +10,12 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 
-def _load_hardware(config_file, namespace=None):
+def _load_hardware(config_file, namespace=None, **kwargs):
     print(f"Attempting to load objects in {config_file}")
     with open(config_file, "rb") as f:
         config = tomllib.load(f)
     devices, groups, roles = loadFromConfig(
-        config, instantiateOphyd, alias=True, namespace=namespace
+        config, instantiateOphyd, alias=True, namespace=namespace, **kwargs
     )
     for key, dev in devices.items():
         globals()[key] = dev

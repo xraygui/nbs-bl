@@ -57,6 +57,10 @@ def load_and_configure_everything(startup_dir=None):
     ip.user_ns["request_update"] = request_update
     devices, groups, roles = _load_hardware(object_file, ip.user_ns)
     GLOBAL_BEAMLINE.load_devices(devices, groups, roles, beamline_config)
+    devices2, groups2, roles2 = _load_hardware(
+        object_file, ip.user_ns, load_pass=2, beamline=GLOBAL_BEAMLINE
+    )
+    GLOBAL_BEAMLINE.load_devices(devices2, groups2, roles2, beamline_config)
     # configure_beamline(beamline_file, devices, groups, roles)
     configure_modules()
 

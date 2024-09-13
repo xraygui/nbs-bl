@@ -1,6 +1,10 @@
-import toml
 from copy import deepcopy
 from importlib import import_module
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 
 def loadConfigDB(filename):
@@ -17,8 +21,8 @@ def loadConfigDB(filename):
     dict
         The configuration loaded from the TOML file.
     """
-    with open(filename) as f:
-        db = toml.load(f)
+    with open(filename, "rb") as f:
+        db = tomllib.load(f)
     return db
 
 
