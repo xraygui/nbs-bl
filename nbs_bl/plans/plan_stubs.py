@@ -14,6 +14,20 @@ def call_obj(obj, method, *args, **kwargs):
     return ret
 
 
+def sampleholder_move_sample(sampleholder, sample_id=None, **position):
+    """
+    Set and move a sample.
+    """
+    yield from call_obj(sampleholder, "move_sample", sample_id, **position)
+
+
+def sampleholder_set_sample(sampleholder, sample_id):
+    """
+    Set a sample without moving it
+    """
+    yield from call_obj(sampleholder, "set_sample", sample_id)
+
+
 @add_to_plan_list
 def set_exposure(time: Optional[float] = None, extra_dets=[]):
     """Sets the exposure time for all active detectors"""

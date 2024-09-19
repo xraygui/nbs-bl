@@ -1,6 +1,15 @@
 from bluesky.preprocessors import SupplementalData
+from .queueserver import add_status
 from .status import StatusDict
 from .hw import HardwareGroup, DetectorGroup
+
+"""
+Actual beamline configuration:
+has_slits
+has_motorized_samples
+has_motorized_eref
+has_unified_energy (not going to handle yet)
+"""
 
 
 class BeamlineModel:
@@ -35,6 +44,8 @@ class BeamlineModel:
         Creates an empty BeamlineModel, need to load_devices after init
         """
         self.supplemental_data = SupplementalData()
+        self.settings = StatusDict()
+        add_status("SETTINGS", self.settings)
         self.devices = StatusDict()
         self.energy = None
         self.primary_manipulator = None

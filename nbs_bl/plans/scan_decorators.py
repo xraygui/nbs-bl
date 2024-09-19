@@ -1,9 +1,6 @@
 from functools import wraps
 from ..globalVars import (
-    # GLOBAL_ACTIVE_DETECTORS,
-    # GLOBAL_PLOT_DETECTORS,
     GLOBAL_SELECTED,
-    # GLOBAL_ENERGY,
     GLOBAL_BEAMLINE,
 )
 from ..detectors import (
@@ -12,42 +9,121 @@ from ..detectors import (
     activate_detector_set,
 )
 from ..utils import merge_func
-from .plan_stubs import set_exposure
+from .plan_stubs import set_exposure, sampleholder_set_sample, sampleholder_move_sample
 from bluesky.plan_stubs import mv
 from .preprocessors import wrap_metadata
-from ..plans.groups import repeat
+from .groups import repeat
 
 # from ..settings import settings
 from typing import Optional
 
 
 def _beamline_setup(func):
+    blconf = GLOBAL_BEAMLINE.config.get("configuration", {})
+    if blconf.get("has_slits", False):
+        func = _slit_setup(func)
+    if blconf.get("has_motorized_sampleholder", False):
+        func = _sample_setup_with_move(func)
+    else:
+        func = _sample_setup_no_move(func)
+    if blconf.get("has_motorized_eref", False):
+        func = _eref_setup(func)
+    func = _energy_setup(func)
+    return func
+
+
+def _eref_setup(func):
     @merge_func(func)
-    def inner(
+    def _inner(*args, eref_sample: Optional[str] = None, **kwargs):
+        """
+        Parameters
+        ----------
+        eref_sample : str, optional
+            The energy reference sample. If given, the selected reference sample is set
+        """
+        if eref_sample is not None:
+            yield from sampleholder_move_sample(
+                GLOBAL_BEAMLINE.reference_sampleholder, eref_sample
+            )
+        return (yield from func(*args, **kwargs))
+
+    return _inner
+
+
+def _sample_setup_with_move(func):
+    @merge_func(func)
+    def _inner(
         *args,
-        sample=None,
-        eslit: Optional[float] = None,
-        energy: Optional[float] = None,
+        sample: Optional[str] = None,
+        sample_position: Optional[dict] = {},
         **kwargs,
     ):
         """
         Parameters
         ----------
-        sample : int or str, optional
-            The sample id. If not None, the sample is moved into the beam at a 45 degree angle.
-        eslit : float, optional
-            If not None, will change the beamline exit slit. Note that currently, eslit values are given as -2* the desired exit slit size in mm.
+        sample : str, optional
+            The sample id. If given, the selected sample metadata is set
+        sample_position: dict, optional
+            A dictionary of positions relative to the sample center. Parameters not give will be assumed to
+            be the default for the sampleholder (typically moving the sample into the beam at a typical angle)
         """
+        if sample is not None:
+            yield from sampleholder_move_sample(
+                GLOBAL_BEAMLINE.sampleholder, sample, **sample_position
+            )
+        return (yield from func(*args, **kwargs))
 
-        # if sample is not None:
-        #    yield from sample_move(0, 0, 45, sample)
+    return _inner
+
+
+def _sample_setup_no_move(func):
+    @merge_func(func)
+    def _inner(*args, sample=None, **kwargs):
+        """
+        Parameters
+        ----------
+        sample : str, optional
+            The sample id. If given, the selected sample metadata is set, but the sample is not moved
+        """
+        if sample is not None:
+            yield from sampleholder_set_sample(
+                GLOBAL_BEAMLINE.primary_sampleholder, sample
+            )
+        return (yield from func(*args, **kwargs))
+
+    return _inner
+
+
+def _slit_setup(func):
+    @merge_func(func)
+    def _inner(*args, eslit: Optional[float] = None, **kwargs):
+        """
+        Parameters
+        ----------
+        eslit : float, optional
+            If not None, will set the beamline exit slit prior to the plan start.
+        """
         if eslit is not None:
             yield from mv(GLOBAL_BEAMLINE.slits, eslit)
+        return (yield from func(*args, **kwargs))
+
+    return _inner
+
+
+def _energy_setup(func):
+    @merge_func(func)
+    def _inner(*args, energy: Optional[float] = None, **kwargs):
+        """
+        Parameters
+        ----------
+        energy : float, optional
+            If not None, will set the beamline energy prior to the plan start.
+        """
         if energy is not None:
             yield from mv(GLOBAL_BEAMLINE.energy, energy)
         return (yield from func(*args, **kwargs))
 
-    return inner
+    return _inner
 
 
 def _wrap_xas(element):
@@ -141,7 +217,6 @@ def _nbs_add_comment(func):
             _md = {}
         if group_name is not None:
             _md["group_name"] = group_name
-        _md.update(md)
         return (yield from func(*args, md=_md, **kwargs))
 
     return _inner

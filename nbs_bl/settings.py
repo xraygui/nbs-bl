@@ -6,6 +6,19 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
+"""
+Example Beamline Settings:
+What we need to capture
+
+[settings]
+modules = ['ucal.startup']
+regions = ['regions.toml']
+
+[settings.redis]
+host = "redis"
+prefix = "nexafs-"
+
+"""
 
 _default_settings = {
     "device_filename": "devices.toml",

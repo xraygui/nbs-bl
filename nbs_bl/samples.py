@@ -1,15 +1,18 @@
-from .globalVars import GLOBAL_SAMPLES, GLOBAL_SELECTED
-from .help import add_to_func_list
+from .globalVars import GLOBAL_BEAMLINE, GLOBAL_SAMPLES, GLOBAL_SELECTED
+from .help import add_to_func_list, add_to_plan_list
+from nbs_bl.plans.plan_stubs import sampleholder_set_sample, sampleholder_move_sample
 
 
-@add_to_func_list
-def set_sample(sampleid, origin="center"):
-    print(f"Setting sample to {sampleid}")
-    sample_info = GLOBAL_SAMPLES.get(str(sampleid), {})
-    GLOBAL_SELECTED.clear()
-    GLOBAL_SELECTED["sample_id"] = sampleid
-    GLOBAL_SELECTED["origin"] = origin
-    GLOBAL_SELECTED.update(sample_info)
+@add_to_plan_list
+def set_sample(sample_id):
+    yield from sampleholder_set_sample(GLOBAL_BEAMLINE.sampleholder, sample_id)
+
+
+@add_to_plan_list
+def move_sample(sample_id, **position):
+    yield from sampleholder_move_sample(
+        GLOBAL_BEAMLINE.sampleholder, sample_id, **position
+    )
 
 
 @add_to_func_list
