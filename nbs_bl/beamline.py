@@ -39,6 +39,16 @@ class BeamlineModel:
         "slits",
     ]
 
+    reserved = [
+        "current_sample",
+        "samples",
+        "config",
+        "groups",
+        "roles",
+        "supplemental_data",
+        "devices",
+    ]
+
     def __init__(self, *args, **kwargs):
         """
         Creates an empty BeamlineModel, need to load_devices after init
@@ -48,7 +58,7 @@ class BeamlineModel:
         add_status("SETTINGS", self.settings)
         self.devices = StatusDict()
         self.energy = None
-        self.primary_manipulator = None
+        self.primary_sampleholder = None
         self.default_shutter = None
         self.config = {}
         self.groups = list(self.default_groups)  # Create a copy of the default groups
@@ -72,10 +82,18 @@ class BeamlineModel:
             self._configure_group(groupname, devicelist)
         print(roles)
         for role, key in roles.items():
+            if role in self.reserved:
+                raise KeyError(f"Key {role} is reserved, use a different role name")
             if role != "":
-                self.roles.append(role)
+                if role not in self.roles:
+                    self.roles.append(role)
                 print(f"Setting {role} to {key}")
                 setattr(self, role, devices[key])
+            if role == "primary_sampleholder":
+                add_status("GLOBAL_SAMPLES", self.primary_sampleholder.samples)
+                add_status("GLOBAL_SELECTED", self.primary_sampleholder.current_sample)
+                self.samples = self.primary_sampleholder.samples
+                self.current_sample = self.primary_sampleholder.current_sample
 
     def get_device(self, device_name, get_subdevice=True):
         """
@@ -101,6 +119,9 @@ class BeamlineModel:
             self.supplemental_data.baseline.append(device)
 
     def _configure_group(self, groupname, devicelist):
+        if groupname in self.reserved:
+            raise KeyError(f"Key {groupname} is reserved, use a different group name")
+
         configuration = self.config.get("configuration", {})
         all_device_config = self.config.get("devices", {})
         group_baseline = groupname in configuration.get("baseline", [])
@@ -119,3 +140,6 @@ class BeamlineModel:
             )
             if should_add_to_baseline:
                 self.add_to_baseline(key, False)
+
+
+GLOBAL_BEAMLINE = BeamlineModel()

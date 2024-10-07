@@ -1,8 +1,5 @@
 from functools import wraps
-from ..globalVars import (
-    GLOBAL_SELECTED,
-    GLOBAL_BEAMLINE,
-)
+from ..beamline import GLOBAL_BEAMLINE
 from ..detectors import (
     activate_detector,
     deactivate_detector,
@@ -69,7 +66,7 @@ def _sample_setup_with_move(func):
         """
         if sample is not None:
             yield from sampleholder_move_sample(
-                GLOBAL_BEAMLINE.sampleholder, sample, **sample_position
+                GLOBAL_BEAMLINE.primary_sampleholder, sample, **sample_position
             )
         return (yield from func(*args, **kwargs))
 
@@ -182,10 +179,10 @@ def _nbs_add_sample_md(func):
         """
         md = md or {}
         _md = {
-            "sample_name": GLOBAL_SELECTED.get("name", ""),
-            "sample_id": GLOBAL_SELECTED.get("sample_id", ""),
-            "sample_desc": GLOBAL_SELECTED.get("description", ""),
-            "sample_set": GLOBAL_SELECTED.get("group", ""),
+            "sample_name": GLOBAL_BEAMLINE.current_sample.get("name", ""),
+            "sample_id": GLOBAL_BEAMLINE.current_sample.get("sample_id", ""),
+            "sample_desc": GLOBAL_BEAMLINE.current_sample.get("description", ""),
+            "sample_set": GLOBAL_BEAMLINE.current_sample.get("group", ""),
         }
         _md.update(md)
         return (yield from func(*args, md=_md, **kwargs))

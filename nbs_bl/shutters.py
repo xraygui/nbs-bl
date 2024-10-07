@@ -1,4 +1,4 @@
-from .globalVars import GLOBAL_BEAMLINE
+from .beamline import GLOBAL_BEAMLINE
 from .help import add_to_plan_list, add_to_func_list
 from bluesky.plan_stubs import rd
 

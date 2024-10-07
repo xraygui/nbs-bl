@@ -6,18 +6,9 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 from .hw import _load_hardware
-from .globalVars import GLOBAL_BEAMLINE, GLOBAL_SETTINGS
-
-# from .globalVars import (
-#     GLOBAL_HARDWARE,
-#     GLOBAL_ALIGNMENT_DETECTOR,
-#     GLOBAL_ENERGY,
-#     GLOBAL_MANIPULATOR,
-#     GLOBAL_BEAMLINE,
-# )
-from .settings import load_settings
+from .beamline import GLOBAL_BEAMLINE
+from .settings import load_settings, GLOBAL_SETTINGS
 from .queueserver import request_update, get_status
-from nbs_core.utils import iterfy
 
 
 def get_startup_dir():
@@ -63,146 +54,6 @@ def load_and_configure_everything(startup_dir=None):
     GLOBAL_BEAMLINE.load_devices(devices2, groups2, roles2, beamline_config)
     # configure_beamline(beamline_file, devices, groups, roles)
     configure_modules()
-
-
-def auto_add_devices_to_groups(beamline_config, devices):
-    for obj_key, obj_dict in devices.items():
-        if "_group" in obj_dict:
-            gkeylist = iterfy(obj_dict["_group"])
-            for gkey in gkeylist:
-                if gkey not in beamline_config:
-                    beamline_config[gkey] = {}
-                group = beamline_config[gkey]
-                if "devices" not in group:
-                    group["devices"] = []
-                if obj_key not in group["devices"] and obj_key not in group.get(
-                    "exclude", []
-                ):
-                    group["devices"].append(obj_key)
-    return beamline_config
-
-
-def configure_beamline(beamline_file, devices, groups, roles, namespace=None):
-    """
-    Configure the beamline using settings from TOML files.
-
-    Parameters
-    ----------
-    beamline_file : str
-        The path to the beamline configuration file.
-    object_file : str
-        The path to the object configuration file.
-    """
-
-    with open(beamline_file, "rb") as f:
-        beamline_config = tomllib.load(f)
-
-    configure_detectors(
-        groups.get("detectors", {}), beamline_config.get("detectors", {})
-    )
-    _configure_base(
-        groups.get("source", {}),
-        beamline_config.get("source", {}),
-        should_add_to_baseline=True,
-    )
-    configure_motors(groups.get("motors", {}), beamline_config.get("motors", {}))
-    configure_shutters(groups.get("shutters", {}), beamline_config.get("shutters", {}))
-    configure_mirrors(groups.get("mirrors", {}), beamline_config.get("mirrors", {}))
-    configure_gatevalves(
-        groups.get("gatevalves", {}), beamline_config.get("gatevalves", {})
-    )
-    configure_energy(roles["energy"], roles["slits"])
-    configure_manipulators(
-        groups.get("manipulators", {}),
-        beamline_config.get("manipulators", {}),
-        roles.get("primary_manipulator", None),
-    )
-
-
-def _configure_base(
-    devices, config_dict, add_device=None, should_add_to_baseline=False
-):
-    configuration = config_dict.get("configuration", {})
-    should_add_to_baseline = configuration.pop("baseline", should_add_to_baseline)
-    for device in devices:
-        dev = GLOBAL_HARDWARE[device]
-        if add_device is not None:
-            add_device(dev, name=device, **configuration.get(device, {}))
-        if should_add_to_baseline:
-            add_to_baseline(device, False)
-
-
-def configure_detectors(devices, config_dict):
-    _configure_base(devices, config_dict, add_detector)
-    groups = config_dict.get("sets", {})
-    for key, val in groups.items():
-        add_detector_set(key, **val)
-    alignment = config_dict.get("alignment", {})
-    for key, val in alignment.items():
-        dev = GLOBAL_HARDWARE[val]
-        GLOBAL_ALIGNMENT_DETECTOR[key] = dev
-    if "indirect" in GLOBAL_ALIGNMENT_DETECTOR:
-        GLOBAL_ALIGNMENT_DETECTOR["default"] = GLOBAL_ALIGNMENT_DETECTOR["indirect"]
-    elif "direct" in GLOBAL_ALIGNMENT_DETECTOR:
-        GLOBAL_ALIGNMENT_DETECTOR["default"] = GLOBAL_ALIGNMENT_DETECTOR["direct"]
-
-
-def configure_motors(devices, config_dict):
-    _configure_base(devices, config_dict, add_motor, True)
-
-
-def configure_gatevalves(devices, config_dict):
-    _configure_base(devices, config_dict, add_valve, False)
-
-
-def configure_shutters(devices, config_dict):
-    _configure_base(devices, config_dict, add_shutter, True)
-
-
-def configure_mirrors(devices, config_dict):
-    _configure_base(devices, config_dict, add_mirror, True)
-
-
-def get_device(device_name, get_subdevice=True):
-    """
-    If get_subdevice, follow dotted device names and return the deepest device.
-    If False, follow the parents and return the overall parent device
-    """
-    device_parts = device_name.split(".")
-    device = GLOBAL_HARDWARE[device_parts[0]]
-    if get_subdevice:
-        for subdev in device_parts[1:]:
-            device = getattr(device, subdev)
-    else:
-        while device.parent is not None:
-            device = device.parent
-    return device
-
-
-def add_to_baseline(device_or_name, only_subdevice=False):
-    if isinstance(device_or_name, str):
-        device = get_device(device_or_name, only_subdevice)
-    else:
-        device = device_or_name
-    if device not in GLOBAL_SUPPLEMENTAL_DATA.baseline:
-        GLOBAL_SUPPLEMENTAL_DATA.baseline.append(device)
-
-
-def configure_energy(energy_key, slit_key):
-    print(f"energy key: {energy_key}")
-    GLOBAL_ENERGY["energy"] = get_device(energy_key)
-    add_to_baseline(energy_key)
-
-    GLOBAL_ENERGY["slit"] = get_device(slit_key)
-    add_to_baseline(slit_key)
-
-
-def configure_manipulators(devices, config_dict, primary_manipulator):
-    _configure_base(devices, config_dict, should_add_to_baseline=True)
-    if primary_manipulator is not None:
-        GLOBAL_MANIPULATOR["primary"] = get_device(primary_manipulator)
-    else:
-        GLOBAL_MANIPULATOR["primary"] = None
 
 
 def configure_modules():

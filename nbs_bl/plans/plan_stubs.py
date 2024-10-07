@@ -1,4 +1,4 @@
-from ..globalVars import GLOBAL_BEAMLINE
+from ..beamline import GLOBAL_BEAMLINE
 from ..help import add_to_plan_list
 import warnings
 from bluesky import Msg

@@ -1,6 +1,6 @@
 import asyncio
 from bluesky import RunEngine
-from .globalVars import GLOBAL_BEAMLINE
+from .beamline import GLOBAL_BEAMLINE
 from bluesky_queueserver import is_re_worker_active
 
 

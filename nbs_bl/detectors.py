@@ -1,5 +1,5 @@
 from .help import add_to_func_list
-from .globalVars import GLOBAL_BEAMLINE
+from .beamline import GLOBAL_BEAMLINE
 from ophyd import Device, Component as Cpt, EpicsSignal, Signal
 from ophyd.status import DeviceStatus
 import threading

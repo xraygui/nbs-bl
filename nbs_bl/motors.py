@@ -1,5 +1,5 @@
 from ophyd.utils.errors import DisconnectedError
-from .globalVars import GLOBAL_BEAMLINE
+from .beamline import GLOBAL_BEAMLINE
 from .help import add_to_func_list
 from queue import Queue, Empty
 import time

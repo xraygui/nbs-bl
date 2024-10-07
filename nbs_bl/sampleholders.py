@@ -10,6 +10,7 @@ from nbs_bl.geometry.affine import NullFrame, Frame, find_rotation
 import numpy as np
 from .queueserver import add_status
 from .status import StatusDict
+import copy
 
 
 class SampleHolderBase(Device):
@@ -32,7 +33,7 @@ class SampleHolderBase(Device):
         self.holder_md = {}
         self.holder_frames = {}
         self.current_frame = self.attachment_frame
-        self.current_sample = None
+        self.current_sample = StatusDict()
         self.set_holder(holder)
 
     def set_holder(self, holder):
@@ -48,12 +49,14 @@ class SampleHolderBase(Device):
 
     def clear_holder(self):
         self.set_holder(None)
-        self.samples = {}
-        self.sample_frames = {}
+        self.samples.clear()
+        self.sample_frames.clear()
+        self.current_sample.clear()
 
     def clear_samples(self):
-        self.samples = {}
-        self.sample_frames = {}
+        self.samples.clear()
+        self.sample_frames.clear()
+        self.current_sample.clear()
 
     def add_sample(self, name, id, position, description="", **kwargs):
         sample_frame = self.holder.make_sample_frame(position)
@@ -66,13 +69,58 @@ class SampleHolderBase(Device):
         }
         self.sample_frames[id] = sample_frame
 
+    def remove_sample(self, sample_id):
+        self.samples.pop(sample_id, None)
+        self.sample_frames.pop(sample_id, None)
+        if self.current_sample.get("sample_id") == sample_id:
+            self.current_sample.clear()
+
     def set_sample(self, sample_id):
         if sample_id in self.sample_frames:
             self.current_frame = self.sample_frames[sample_id]
-            self.current_sample = self.samples[sample_id]
+            self.current_sample.clear()
+            self.current_sample.update(self.samples[sample_id])
         elif sample_id in self.holder_frames:
             self.current_frame = self.holder_frames[sample_id]
-            self.current_sample = self.holder_md[sample_id]
+            self.current_sample.clear()
+            self.current_sample.update(self.holder_md[sample_id])
+
+    def load_sample_dict(self, samples, clear=True):
+        """
+        Create a sample dictionary into a sampleholder
+
+        Parameters
+        ----------
+        samples : Dict
+            A dictionary whose keys are sample_id keys, and entries that are dictionaries containing
+            at least 'name' and 'position' keys, and optionally a 'description' key. The format of
+            the 'position' item depends on the sampleholder that is being used. Additional items in the
+            dictionary will be passed to the sampleholder add_sample function.description
+        clear : Bool
+            If True, clear existing samples from the sampleholder.
+        """
+        if clear:
+            self.clear_samples()
+        for sample_id, s in samples.items():
+            sdict = copy.deepcopy(s)
+            name = sdict.pop("name")
+            description = sdict.pop("description", name)
+            position = sdict.pop("position")
+            # add_sample_to_globals(
+            #     sample_id, name, position, side, thickness, description, **sdict
+            # )
+            self.add_sample(
+                name,
+                sample_id,
+                position,
+                description=description,
+                **sdict,
+            )
+        return
+
+    def load_sample_file(self, filename, clear=True):
+        samples = self.holder.read_sample_file(filename)
+        self.load_sample_dict(samples, clear=clear)
 
 
 class Manipulator1AxBase(PseudoPositioner, SampleHolderBase):

@@ -1,5 +1,6 @@
 from os.path import exists
-from .globalVars import GLOBAL_SETTINGS
+from .status import StatusDict
+from .queueserver import add_status
 
 try:
     import tomllib
@@ -19,6 +20,9 @@ host = "redis"
 prefix = "nexafs-"
 
 """
+GLOBAL_SETTINGS = StatusDict()
+add_status("SETTINGS", GLOBAL_SETTINGS)
+
 
 _default_settings = {
     "device_filename": "devices.toml",

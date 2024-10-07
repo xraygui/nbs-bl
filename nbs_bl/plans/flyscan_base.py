@@ -80,7 +80,7 @@ def fly_scan(
     Flyscan one motor in a trajectory
 
     Parameters
-    -----------
+    ----------
     detectors : list
         list of 'readable' or 'flyable' devices
     motor :

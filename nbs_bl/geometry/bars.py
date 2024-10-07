@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import csv
 
 
 class GeometryBase(ABC):
@@ -41,6 +42,15 @@ class GeometryBase(ABC):
     def attach_manipulator(self, manipframe):
         self.manip_frame = manipframe
         self.generate_geometry()
+
+    def read_sample_file(self, filename):
+        extension = filename.split(".")[-1]
+        if extension in ["csv"] and hasattr(self, "read_sample_csv"):
+            return self.read_sample_csv(filename)
+        else:
+            raise AttributeError(
+                f"File had extension {extension}, but this geometry has no read method"
+            )
 
 
 class Standard4SidedBar(GeometryBase):
@@ -92,6 +102,38 @@ class Standard4SidedBar(GeometryBase):
             side_md[side_str] = side_dict
             side_frames[side_str] = side_frame
         return side_md, side_frames
+
+    def read_sample_csv(self, filename):
+        with open(filename, "r") as f:
+            sampleReader = csv.reader(f, skipinitialspace=True)
+            samplelist = [row for row in sampleReader]
+            rownames = [n for n in samplelist[0] if n != ""]
+            # rownames = ["sample_id", "sample_name", "side", "x1", "y1", "x2", "y2",
+            #            "t", "tags"]
+            samples = {}
+            for sample in samplelist[1:]:
+                sample_id = sample[0]
+                sample_dict = {
+                    key: sample[rownames.index(key)]
+                    for key in rownames[1:]
+                    if sample[rownames.index(key)] != ""
+                }
+                coordinates = (
+                    float(sample_dict.pop("x1")),
+                    float(sample_dict.pop("y1")),
+                    float(sample_dict.pop("x2")),
+                    float(sample_dict.pop("y2")),
+                )
+                thickness = sample_dict.pop("thickness", 0)
+                side = sample_dict.pop("side")
+                position = {
+                    "side": side,
+                    "coordinates": coordinates,
+                    "thickness": thickness,
+                }
+                sample_dict["position"] = position
+                samples[sample_id] = sample_dict
+        return samples
 
 
 class Bar1d(GeometryBase):
