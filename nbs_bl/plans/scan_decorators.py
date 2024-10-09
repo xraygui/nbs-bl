@@ -19,7 +19,7 @@ def _beamline_setup(func):
     blconf = GLOBAL_BEAMLINE.config.get("configuration", {})
     if blconf.get("has_slits", False):
         func = _slit_setup(func)
-    if blconf.get("has_motorized_sampleholder", False):
+    if blconf.get("has_motorized_samples", False):
         func = _sample_setup_with_move(func)
     else:
         func = _sample_setup_no_move(func)
@@ -61,7 +61,7 @@ def _sample_setup_with_move(func):
         sample : str, optional
             The sample id. If given, the selected sample metadata is set
         sample_position: dict, optional
-            A dictionary of positions relative to the sample center. Parameters not give will be assumed to
+            A dictionary of positions relative to the sample center. Parameters not given will be assumed to
             be the default for the sampleholder (typically moving the sample into the beam at a typical angle)
         """
         if sample is not None:
