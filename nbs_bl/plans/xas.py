@@ -42,7 +42,12 @@ def _xas_factory(energy_grid, edge, name):
             Arguments to be passed to tes_gscan
 
         """
-        yield from nbs_gscan(GLOBAL_BEAMLINE.energy, *energy_grid, **kwargs)
+        eref_sample = kwargs.pop("eref_sample", None)
+        if eref_sample is None:
+            eref_sample = edge
+        yield from nbs_gscan(
+            GLOBAL_BEAMLINE.energy, *energy_grid, eref_sample=eref_sample, **kwargs
+        )
 
     d = f"Perform an in-place xas scan for {edge} with energy pattern {energy_grid} \n"
     inner.__doc__ = d + inner.__doc__

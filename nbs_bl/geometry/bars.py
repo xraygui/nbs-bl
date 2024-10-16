@@ -61,6 +61,14 @@ class Standard4SidedBar(GeometryBase):
 
     def make_sample_frame(self, position):
         side = position.get("side")
+        # origin = position.get("origin", "bar")
+        # if origin in ["abs", "absolute"]:
+        #     x, y, z, r = position.get("coordinates")
+        #     origin = (x, y, z)
+        #     parent_frame = self.manip_frame.parent
+        #     sample_frame = parent_frame.make_child_frame(origin=origin)
+
+        # else:
         x1, y1, x2, y2 = position.get("coordinates")
         z = position.get("thickness", 0)
         origin = (0.5 * (x1 + x2), 0.5 * (y1 + y2), z)
