@@ -133,6 +133,9 @@ class Standard4SidedBar(GeometryBase):
                 }
                 sample_dict["position"] = position
                 samples[sample_id] = sample_dict
+                if "sample_name" in sample_dict:
+                    name = sample_dict.pop("sample_name")
+                    sample_dict["name"] = name
         return samples
 
 
