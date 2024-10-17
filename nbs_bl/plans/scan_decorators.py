@@ -214,6 +214,7 @@ def _nbs_add_comment(func):
             _md = {}
         if group_name is not None:
             _md["group_name"] = group_name
+        _md.update(md)
         return (yield from func(*args, md=_md, **kwargs))
 
     return _inner
