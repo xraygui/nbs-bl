@@ -71,10 +71,11 @@ def flystream_during_wrapper(plan, flyers, stream=True):
 def fly_scan(
     detectors,
     motor,
+    start,
+    stop,
     *args,
     md: Optional[dict] = None,
-    period: Optional[float] = None,
-    stream=True
+    period: Optional[float] = None
 ):
     """
     Flyscan one motor in a trajectory
@@ -107,7 +108,7 @@ def fly_scan(
         "motors": [motor.name],
         "plan_args": {
             "detectors": list(map(repr, detectors)),
-            "args": [repr(motor)] + [a for a in args],
+            "args": [repr(motor), start, stop] + [a for a in args],
         },
         "plan_name": "fly_scan",
         "hints": {},
@@ -132,7 +133,7 @@ def fly_scan(
             except RuntimeError as ex:
                 warn(repr(ex), RuntimeWarning)
 
-    yield from call_obj(motor, "preflight", *args)
+    yield from call_obj(motor, "preflight", start, stop, *args)
 
     @bpp.stage_decorator(readers)
     @bpp.run_decorator(md=_md)
@@ -144,4 +145,4 @@ def fly_scan(
 
         yield from call_obj(motor, "land")
 
-    return (yield from flystream_during_wrapper(inner_flyscan(), flyers, stream=stream))
+    return (yield from flystream_during_wrapper(inner_flyscan(), flyers))

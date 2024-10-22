@@ -1,5 +1,6 @@
 from .scan_decorators import nbs_builtin_scan_wrapper
 from .scan_base import _make_gscan_points
+from .flyscan_base import fly_scan
 from ..help import add_to_scan_list
 from ..utils import merge_func
 
@@ -25,6 +26,7 @@ _scan_list = [
     bp.rel_spiral,
     bp.rel_spiral_fermat,
     bp.rel_spiral_square,
+    fly_scan,
 ]
 
 for _scan in _scan_list:

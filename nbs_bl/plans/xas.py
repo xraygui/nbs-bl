@@ -3,7 +3,7 @@ from ..plans.scans import nbs_gscan
 from ..plans.scan_decorators import _wrap_xas
 from ..utils import merge_func
 from ..plans.preprocessors import wrap_metadata
-from ..help import _add_to_import_list
+from ..help import _add_to_import_list, add_to_func_list
 from ..queueserver import add_status
 from ..status import StatusDict
 from ..beamline import GLOBAL_BEAMLINE
@@ -60,6 +60,7 @@ def _xas_factory(energy_grid, edge, key):
     return inner
 
 
+@add_to_func_list
 def load_xas(filename):
     with open(join(filename), "rb") as f:
         regions = tomllib.load(f)

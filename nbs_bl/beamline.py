@@ -94,6 +94,11 @@ class BeamlineModel:
                 add_status("GLOBAL_SELECTED", self.primary_sampleholder.current_sample)
                 self.samples = self.primary_sampleholder.samples
                 self.current_sample = self.primary_sampleholder.current_sample
+            elif role == "reference_sampleholder":
+                add_status("REFERENCE_SAMPLES", self.reference_sampleholder.samples)
+                add_status(
+                    "REFERENCE_SELECTED", self.reference_sampleholder.current_sample
+                )
 
     def get_device(self, device_name, get_subdevice=True):
         """
