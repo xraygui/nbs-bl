@@ -43,7 +43,7 @@ class FlyerMixin:
         st = self.move(start)
         if speed is None:
             speed = self._old_velocity
-        self.velocity.set(speed)
+        self.velocity.set(speed).wait()
         if time_resolution is not None:
             self._time_resolution = time_resolution
         else:
@@ -67,7 +67,7 @@ class FlyerMixin:
 
     def land(self):
         if self._fly_move_st.done:
-            self.velocity.set(self._old_velocity)
+            self.velocity.set(self._old_velocity).wait()
             self._flying = False
             self._time_resolution = None
 

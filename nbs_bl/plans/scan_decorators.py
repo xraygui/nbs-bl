@@ -109,7 +109,12 @@ def _slit_setup(func):
 
 def _energy_setup(func):
     @merge_func(func)
-    def _inner(*args, energy: Optional[float] = None, **kwargs):
+    def _inner(
+        *args,
+        energy: Optional[float] = None,
+        polarization: Optional[float] = None,
+        **kwargs,
+    ):
         """
         Parameters
         ----------
@@ -118,6 +123,8 @@ def _energy_setup(func):
         """
         if energy is not None:
             yield from mv(GLOBAL_BEAMLINE.energy, energy)
+        if polarization is not None and hasattr(GLOBAL_BEAMLINE, "polarization"):
+            yield from mv(GLOBAL_BEAMLINE.polarization, polarization)
         return (yield from func(*args, **kwargs))
 
     return _inner
