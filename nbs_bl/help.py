@@ -1,16 +1,13 @@
-from .status import StatusList, StatusDict
-from .queueserver import add_status
+from .status import StatusList
+from .queueserver import GLOBAL_USER_STATUS
 from .printing import boxed_text
 
 GLOBAL_HELP_DICTIONARY = {"functions": {}, "plans": {}, "scans": {}, "xas": {}}
 GLOBAL_IMPORT_DICTIONARY = {}
 
-
-GLOBAL_PLAN_LIST = StatusList()
-GLOBAL_SCAN_LIST = StatusList()
-
-add_status("PLAN_LIST", GLOBAL_PLAN_LIST)
-add_status("SCAN_LIST", GLOBAL_SCAN_LIST)
+# Request status lists from the global manager
+GLOBAL_PLAN_LIST = GLOBAL_USER_STATUS.request_status_list("PLAN_LIST", use_redis=True)
+GLOBAL_SCAN_LIST = GLOBAL_USER_STATUS.request_status_list("SCAN_LIST", use_redis=True)
 
 
 def _add_to_import_list(f, help_section):

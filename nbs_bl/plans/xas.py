@@ -4,10 +4,11 @@ from ..plans.scan_decorators import _wrap_xas
 from ..utils import merge_func
 from ..plans.preprocessors import wrap_metadata
 from ..help import _add_to_import_list, add_to_func_list
-from ..queueserver import add_status
+from ..queueserver import GLOBAL_USER_STATUS
 from ..status import StatusDict
 from ..beamline import GLOBAL_BEAMLINE
-from ..settings import GLOBAL_SETTINGS as settings
+
+# from ..settings import GLOBAL_SETTINGS as settings
 from os.path import join
 
 try:
@@ -15,9 +16,7 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
-GLOBAL_XAS_PLANS = StatusDict()
-
-add_status("XAS_PLANS", GLOBAL_XAS_PLANS)
+GLOBAL_XAS_PLANS = GLOBAL_USER_STATUS.request_status_dict("XAS_PLANS", use_redis=True)
 
 
 def add_to_xas_list(f, key, **plan_info):
@@ -72,6 +71,6 @@ def load_xas(filename):
             add_to_xas_list(xas_func, key, name=name, edge=edge, region=region)
 
 
-for region_file in settings.get("regions", []):
-    filename = join(settings["startup_dir"], region_file)
+for region_file in GLOBAL_BEAMLINE.settings.get("regions", []):
+    filename = join(GLOBAL_BEAMLINE.settings["startup_dir"], region_file)
     load_xas(filename)

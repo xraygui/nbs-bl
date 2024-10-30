@@ -1,5 +1,6 @@
 import uuid
 from abc import ABC, abstractmethod
+from redis_json_dict import RedisJSONDict
 
 
 class StatusContainerBase(ABC):
@@ -106,3 +107,8 @@ class StatusSet(StatusContainerBase, set):
         "union",
         "symmetric_difference",
     ]
+
+
+class RedisStatusDict(StatusContainerBase, RedisJSONDict):
+    NORMAL_METHODS = ["__delitem__", "__setitem__", "clear", "pop", "update"]
+    REINIT_METHODS = []

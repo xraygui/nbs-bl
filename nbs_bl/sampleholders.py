@@ -8,32 +8,45 @@ from ophyd.pseudopos import (
 )
 from nbs_bl.geometry.affine import NullFrame, Frame, find_rotation
 import numpy as np
-from .queueserver import add_status
-from .status import StatusDict
+from .queueserver import GLOBAL_USER_STATUS
 import copy
 
 
 class SampleHolderBase(Device):
-    def __init__(self, *args, attachment_point, holder=None, **kwargs):
+    def __init__(self, *args, attachment_point, holder=None, use_redis=True, **kwargs):
         """
-        holder: A GeometryBase subclass that defines the geometry of a samplebar.
+        Parameters
+        ----------
+        holder : GeometryBase, optional
+            A GeometryBase subclass that defines the geometry of a samplebar.
             If None, a holder will need to be set later via set_holder
-        attachment_point: Tuple that gives the coordinates of the attachment point in beam coordinates.
+        attachment_point : tuple
+            Coordinates of the attachment point in beam coordinates.
             I.e, the motor coordinates that will bring the attachment point into the beam.
-
+        use_redis : bool, optional
+            If True, uses Redis-backed status containers where appropriate
         """
         super().__init__(*args, **kwargs)
         self.manip_frame = Frame(origin=np.zeros_like(attachment_point))
         self.attachment_frame = self.manip_frame.make_child_frame(
             origin=attachment_point
         )
-        self.samples = StatusDict()
-        add_status(self.name.upper() + "_SAMPLES", self.samples)
+
+        # Request status containers from global manager
+        self.samples = {}
+        # GLOBAL_USER_STATUS.request_status_dict(
+        #     f"{self.name.upper()}_SAMPLES", use_redis=use_redis
+        # )
+        # current_sample contains metadata, can use Redis
+        self.current_sample = {}
+        # GLOBAL_USER_STATUS.request_status_dict(
+        #     f"{self.name.upper()}_CURRENT", use_redis=use_redis
+        # )
+
         self.sample_frames = {}
         self.holder_md = {}
         self.holder_frames = {}
         self.current_frame = self.attachment_frame
-        self.current_sample = StatusDict()
         self.set_holder(holder)
 
     def set_holder(self, holder):
@@ -57,6 +70,11 @@ class SampleHolderBase(Device):
         self.samples.clear()
         self.sample_frames.clear()
         self.current_sample.clear()
+
+    def add_current_position_as_sample(self, name, id, description, **kwargs):
+        coordinates = self.position
+        origin = "absolute"
+        self.add_sample(name, id, coordinates, description, origin=origin, **kwargs)
 
     def add_sample(self, name, id, position, description="", origin="holder", **kwargs):
         if origin == "absolute":

@@ -1,5 +1,5 @@
 from .status import StatusDict, StatusList
-from .queueserver import add_status
+from .queueserver import GLOBAL_USER_STATUS
 from nbs_core.autoload import loadFromConfig, instantiateOphyd
 from .printing import boxed_text
 
@@ -23,12 +23,14 @@ def _load_hardware(config_file, namespace=None, **kwargs):
 
 
 class HardwareGroup:
-    def __init__(self, name=""):
+    def __init__(self, name="", use_redis=False):
         self.groupname = name
-        self.devices = StatusDict()
-        self.descriptions = StatusDict()
-        add_status(self.groupname.upper(), self.devices)
-        add_status(self.groupname.upper() + "_DESCRIPTIONS", self.descriptions)
+        self.devices = GLOBAL_USER_STATUS.request_status_dict(
+            f"{self.groupname.upper()}", use_redis=False
+        )
+        self.descriptions = GLOBAL_USER_STATUS.request_status_dict(
+            f"{self.groupname.upper()}_DESCRIPTIONS", use_redis=use_redis
+        )
 
     def values(self):
         return self.devices.values()
@@ -76,14 +78,21 @@ class HardwareGroup:
 
 
 class DetectorGroup(HardwareGroup):
-    def __init__(self, name="detectors"):
-        super().__init__(name=name)
-        self.status = StatusDict()
-        self.thresholds = StatusDict()
-        self.active = StatusList()
+    def __init__(self, name="detectors", use_redis=False):
+        super().__init__(name=name, use_redis=use_redis)
+        self.status = GLOBAL_USER_STATUS.request_status_dict(
+            f"{self.groupname.upper()}_STATUS", use_redis=use_redis
+        )
+        self.thresholds = GLOBAL_USER_STATUS.request_status_dict(
+            f"{self.groupname.upper()}_THRESHOLDS", use_redis=use_redis
+        )
+        self.active = GLOBAL_USER_STATUS.request_status_list(
+            f"{self.groupname.upper()}_ACTIVE", use_redis=False
+        )
+        self.detector_sets = GLOBAL_USER_STATUS.request_status_dict(
+            f"{self.groupname.upper()}_SETS", use_redis=use_redis
+        )
         self.roles = {}
-        add_status(self.groupname.upper() + "_STATUS", self.status)
-        add_status(self.groupname.upper() + "_ACTIVE", self.active)
 
     def add(
         self,

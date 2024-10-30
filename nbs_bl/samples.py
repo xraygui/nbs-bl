@@ -42,18 +42,21 @@ def print_selected_sample():
 
 
 @add_to_func_list
-def add_sample_to_globals(
-    sample_id, name, position, side, thickness, description=None, **kwargs
-):
+def add_sample_absolute(name, sample_id, coordinates, description=None, **kwargs):
     sample_id = str(sample_id)
-    GLOBAL_SAMPLES[sample_id] = {
-        "name": name,
-        "position": position,
-        "side": side,
-        "thickness": thickness,
-        "description": description,
-        **kwargs,
-    }
+
+    GLOBAL_BEAMLINE.primary_sampleholder.add_sample(
+        name, sample_id, coordinates, description="", origin="absolute", **kwargs
+    )
+
+
+@add_to_plan_list
+def add_current_position_as_sample(name, sample_id, description=None, **kwargs):
+    sample_id = str(sample_id)
+
+    GLOBAL_BEAMLINE.primary_sampleholder.add_current_position_as_sample(
+        name, sample_id, description="", **kwargs
+    )
 
 
 @add_to_func_list

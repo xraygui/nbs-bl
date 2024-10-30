@@ -1,15 +1,19 @@
 from bluesky.preprocessors import SupplementalData
-from .queueserver import add_status
+from .queueserver import GLOBAL_USER_STATUS
 from .status import StatusDict
-from .hw import HardwareGroup, DetectorGroup
+from .hw import HardwareGroup, DetectorGroup, _load_hardware
+from os.path import join, exists
 
-"""
-Actual beamline configuration:
-has_slits
-has_motorized_samples
-has_motorized_eref
-has_unified_energy (not going to handle yet)
-"""
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
+
+_default_settings = {
+    "device_filename": "devices.toml",
+    "beamline_filename": "beamline.toml",
+}
 
 
 class BeamlineModel:
@@ -47,6 +51,7 @@ class BeamlineModel:
         "roles",
         "supplemental_data",
         "devices",
+        "redis",
     ]
 
     def __init__(self, *args, **kwargs):
@@ -55,13 +60,12 @@ class BeamlineModel:
         """
         self.supplemental_data = SupplementalData()
         self.settings = StatusDict()
-        add_status("SETTINGS", self.settings)
         self.devices = StatusDict()
         self.energy = None
         self.primary_sampleholder = None
         self.default_shutter = None
         self.config = {}
-        self.groups = list(self.default_groups)  # Create a copy of the default groups
+        self.groups = list(self.default_groups)
         self.roles = list(self.default_roles)
         self.detectors = DetectorGroup("detectors")
         self.motors = HardwareGroup("motors")
@@ -74,6 +78,59 @@ class BeamlineModel:
         for role in self.default_roles:
             if not hasattr(self, role):
                 setattr(self, role, None)
+
+    def load_settings(self, settings_file):
+        """
+        Load settings from a TOML file.
+
+        Parameters
+        ----------
+        settings_file : str
+            The path to the settings file.
+        """
+        settings_dict = {}
+        settings_dict.update(_default_settings)
+
+        if not exists(settings_file):
+            print("No settings found, using defaults")
+            config = {}
+        else:
+            with open(settings_file, "rb") as f:
+                config = tomllib.load(f)
+        settings_dict.update(config.get("settings", {}))
+        self.settings.update(settings_dict)
+        print(f"Loading Settings {self.settings}")
+
+    def load_beamline(self, startup_dir, ns=None):
+        """
+        Load and configure the beamline from the startup directory.
+
+        Parameters
+        ----------
+        startup_dir : str
+            Directory containing configuration files
+        ns : dict, optional
+            Namespace for loading devices
+        """
+        settings_file = join(startup_dir, "beamline.toml")
+        self.load_settings(settings_file)
+        self.settings["startup_dir"] = startup_dir
+        object_file = join(startup_dir, self.settings["device_filename"])
+        beamline_file = join(startup_dir, self.settings["beamline_filename"])
+
+        with open(beamline_file, "rb") as f:
+            beamline_config = tomllib.load(f)
+
+        devices, groups, roles = _load_hardware(object_file, ns, load_pass="auto")
+        self.config.update(beamline_config)
+        self.load_redis()
+        tmp_settings = GLOBAL_USER_STATUS.request_status_dict(
+            "SETTINGS", use_redis=True
+        )
+        tmp_settings.update(self.settings)
+        self.settings = tmp_settings
+        print(f"Settings from Redis: {self.settings}")
+        self.load_devices(devices, groups, roles, beamline_config)
 
     def load_devices(self, devices, groups, roles, config):
         self.config.update(config)
@@ -90,15 +147,42 @@ class BeamlineModel:
                 print(f"Setting {role} to {key}")
                 setattr(self, role, devices[key])
             if role == "primary_sampleholder":
-                add_status("GLOBAL_SAMPLES", self.primary_sampleholder.samples)
-                add_status("GLOBAL_SELECTED", self.primary_sampleholder.current_sample)
+                self.primary_sampleholder.samples = (
+                    GLOBAL_USER_STATUS.request_status_dict(
+                        "GLOBAL_SAMPLES", use_redis=True
+                    )
+                )
+                self.primary_sampleholder.current_sample = (
+                    GLOBAL_USER_STATUS.request_status_dict(
+                        "GLOBAL_SELECTED", use_redis=True
+                    )
+                )
                 self.samples = self.primary_sampleholder.samples
                 self.current_sample = self.primary_sampleholder.current_sample
             elif role == "reference_sampleholder":
-                add_status("REFERENCE_SAMPLES", self.reference_sampleholder.samples)
-                add_status(
-                    "REFERENCE_SELECTED", self.reference_sampleholder.current_sample
+                self.reference_sampleholder.samples = (
+                    GLOBAL_USER_STATUS.request_status_dict(
+                        "REFERENCE_SAMPLES", use_redis=True
+                    )
                 )
+                self.reference_sampleholder.current_sample = (
+                    GLOBAL_USER_STATUS.request_status_dict(
+                        "REFERENCE_SELECTED", use_redis=True
+                    )
+                )
+
+    def load_redis(self):
+        redis_settings = (
+            self.config.get("settings", {}).get("redis", {}).get("info", {})
+        )
+        self.redis_settings = redis_settings
+        if redis_settings:
+            GLOBAL_USER_STATUS.init_redis(
+                host=redis_settings["host"],
+                port=redis_settings.get("port", None),
+                db=redis_settings.get("db", 0),
+                global_prefix=redis_settings.get("prefix", ""),
+            )
 
     def get_device(self, device_name, get_subdevice=True):
         """
