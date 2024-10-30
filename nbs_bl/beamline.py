@@ -147,29 +147,29 @@ class BeamlineModel:
                 print(f"Setting {role} to {key}")
                 setattr(self, role, devices[key])
             if role == "primary_sampleholder":
-                self.primary_sampleholder.samples = (
-                    GLOBAL_USER_STATUS.request_status_dict(
-                        "GLOBAL_SAMPLES", use_redis=True
-                    )
+                tmp_samples = GLOBAL_USER_STATUS.request_status_dict(
+                    "GLOBAL_SAMPLES", use_redis=True
                 )
-                self.primary_sampleholder.current_sample = (
-                    GLOBAL_USER_STATUS.request_status_dict(
-                        "GLOBAL_SELECTED", use_redis=True
-                    )
+                tmp_samples.update(self.primary_sampleholder.samples)
+                self.primary_sampleholder.samples = tmp_samples
+                tmp_current = GLOBAL_USER_STATUS.request_status_dict(
+                    "GLOBAL_SELECTED", use_redis=True
                 )
+                tmp_current.update(self.primary_sampleholder.current_sample)
+                self.primary_sampleholder.current_sample = tmp_current
                 self.samples = self.primary_sampleholder.samples
                 self.current_sample = self.primary_sampleholder.current_sample
             elif role == "reference_sampleholder":
-                self.reference_sampleholder.samples = (
-                    GLOBAL_USER_STATUS.request_status_dict(
-                        "REFERENCE_SAMPLES", use_redis=True
-                    )
+                tmp_samples = GLOBAL_USER_STATUS.request_status_dict(
+                    "REFERENCE_SAMPLES", use_redis=True
                 )
-                self.reference_sampleholder.current_sample = (
-                    GLOBAL_USER_STATUS.request_status_dict(
-                        "REFERENCE_SELECTED", use_redis=True
-                    )
+                tmp_samples.update(self.reference_sampleholder.samples)
+                self.reference_sampleholder.samples = tmp_samples
+                tmp_current = GLOBAL_USER_STATUS.request_status_dict(
+                    "REFERENCE_SELECTED", use_redis=True
                 )
+                tmp_current.update(self.reference_sampleholder.current_sample)
+                self.reference_sampleholder.current_sample = tmp_current
 
     def load_redis(self):
         redis_settings = (
