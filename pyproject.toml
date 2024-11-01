@@ -17,3 +17,6 @@ packages = ["nbs_bl"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+
+[project.entry-points."nbs_bl.plan_loaders"]
+xas = "nbs_bl.plans.xas:load_xas"

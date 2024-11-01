@@ -159,6 +159,7 @@ class BeamlineModel:
                 self.primary_sampleholder.current_sample = tmp_current
                 self.samples = self.primary_sampleholder.samples
                 self.current_sample = self.primary_sampleholder.current_sample
+                self.primary_sampleholder.reload_sample_frames()
             elif role == "reference_sampleholder":
                 tmp_samples = GLOBAL_USER_STATUS.request_status_dict(
                     "REFERENCE_SAMPLES", use_redis=True
@@ -170,6 +171,7 @@ class BeamlineModel:
                 )
                 tmp_current.update(self.reference_sampleholder.current_sample)
                 self.reference_sampleholder.current_sample = tmp_current
+                self.reference_sampleholder.reload_sample_frames()
 
     def load_redis(self):
         redis_settings = (

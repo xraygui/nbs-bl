@@ -107,6 +107,10 @@ class SampleHolderBase(Device):
             self.current_frame = self.holder_frames[sample_id]
             self.current_sample.clear()
             self.current_sample.update(self.holder_md[sample_id])
+        else:
+            raise KeyError(
+                f"Sample ID {sample_id} not found in sample frames or holder frames"
+            )
 
     def load_sample_dict(self, samples, clear=True):
         """
@@ -117,7 +121,7 @@ class SampleHolderBase(Device):
         samples : Dict
             A dictionary whose keys are sample_id keys, and entries that are dictionaries containing
             at least 'name' and 'position' keys, and optionally a 'description' key. The format of
-            the 'position' item depends on the sampleholder that is being used. Additional items in the
+            the 'position' dictionary depends on the sampleholder that is being used. Additional items in the
             dictionary will be passed to the sampleholder add_sample function.description
         clear : Bool
             If True, clear existing samples from the sampleholder.
@@ -144,6 +148,29 @@ class SampleHolderBase(Device):
     def load_sample_file(self, filename, clear=True):
         samples = self.holder.read_sample_file(filename)
         self.load_sample_dict(samples, clear=clear)
+
+    def reload_sample_frames(self):
+        """Reload sample frames from the persisted samples dictionary.
+
+        This is useful when samples are loaded from a persistent database but
+        the corresponding frames need to be reconstructed, such as when
+        creating a new SampleHolder instance.
+
+        Note: This requires a holder to be set and will skip any samples
+        with origin="absolute" since those frames are stored directly.
+        """
+        self.sample_frames.clear()
+        for sample_id, sample in self.samples.items():
+            if self.holder is None and sample["origin"] != "absolute":
+                continue
+
+            if sample["origin"] == "absolute":
+                self.sample_frames[sample_id] = {}
+                self.sample_frames[sample_id].update(sample["position"])
+            else:
+                self.sample_frames[sample_id] = self.holder.make_sample_frame(
+                    sample["position"]
+                )
 
 
 class Manipulator1AxBase(PseudoPositioner, SampleHolderBase):

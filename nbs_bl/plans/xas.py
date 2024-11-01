@@ -61,7 +61,15 @@ def _xas_factory(energy_grid, edge, key):
 
 @add_to_func_list
 def load_xas(filename):
-    with open(join(filename), "rb") as f:
+    """
+    Load XAS plans from a TOML file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the TOML file containing XAS plan definitions
+    """
+    with open(filename, "rb") as f:
         regions = tomllib.load(f)
         for key, value in regions.items():
             name = value.get("name", key)
@@ -69,8 +77,3 @@ def load_xas(filename):
             edge = value.get("edge", "")
             xas_func = _xas_factory(region, edge, name)
             add_to_xas_list(xas_func, key, name=name, edge=edge, region=region)
-
-
-for region_file in GLOBAL_BEAMLINE.settings.get("regions", []):
-    filename = join(GLOBAL_BEAMLINE.settings["startup_dir"], region_file)
-    load_xas(filename)
