@@ -16,9 +16,8 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
-import inspect
-
 GLOBAL_XAS_PLANS = GLOBAL_USER_STATUS.request_status_dict("XAS_PLANS", use_redis=True)
+GLOBAL_XAS_PLANS.clear()
 
 
 def add_to_xas_list(f, key, **plan_info):
