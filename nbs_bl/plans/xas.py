@@ -75,5 +75,5 @@ def load_xas(filename):
             name = value.get("name", key)
             region = value.get("region")
             edge = value.get("edge", "")
-            xas_func = _xas_factory(region, edge, name)
+            xas_func = _xas_factory(region, edge, key)
             add_to_xas_list(xas_func, key, name=name, edge=edge, region=region)
