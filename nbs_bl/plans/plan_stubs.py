@@ -42,6 +42,36 @@ def set_exposure(time: Optional[float] = None, extra_dets=[]):
             warnings.warn(repr(ex), RuntimeWarning)
 
 
+@add_to_plan_list
+def set_roi(label, llim, ulim):
+    for d in GLOBAL_BEAMLINE.detectors.active:
+        try:
+            if hasattr(d, "set_roi"):
+                yield from call_obj(d, "set_roi", label, llim, ulim)
+        except RuntimeError as ex:
+            warnings.warn(repr(ex), RuntimeWarning)
+
+
+@add_to_plan_list
+def clear_all_rois():
+    for d in GLOBAL_BEAMLINE.detectors.active:
+        try:
+            if hasattr(d, "clear_all_rois"):
+                yield from call_obj(d, "clear_all_rois")
+        except RuntimeError as ex:
+            warnings.warn(repr(ex), RuntimeWarning)
+
+
+@add_to_plan_list
+def clear_one_roi(label):
+    for d in GLOBAL_BEAMLINE.detectors.active:
+        try:
+            if hasattr(d, "clear_roi"):
+                yield from call_obj(d, "clear_roi", label)
+        except RuntimeError as ex:
+            warnings.warn(repr(ex), RuntimeWarning)
+
+
 def wait_for_signal_below(
     sig, val, timeout: Optional[float] = None, sleep_time: float = 10
 ):

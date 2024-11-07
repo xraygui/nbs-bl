@@ -3,6 +3,7 @@ from ..plans.scans import nbs_gscan
 from ..plans.scan_decorators import _wrap_xas
 from ..utils import merge_func
 from ..plans.preprocessors import wrap_metadata
+from .plan_stubs import set_roi, clear_one_roi
 from ..help import _add_to_import_list, add_to_func_list
 from ..queueserver import GLOBAL_USER_STATUS
 from ..status import StatusDict
@@ -46,9 +47,11 @@ def _xas_factory(energy_grid, edge, key):
         eref_sample = kwargs.pop("eref_sample", None)
         if eref_sample is None:
             eref_sample = edge
+        yield from set_roi("pfy", energy_grid[0], energy_grid[-2])
         yield from nbs_gscan(
             GLOBAL_BEAMLINE.energy, *energy_grid, eref_sample=eref_sample, **kwargs
         )
+        yield from clear_one_roi("pfy")
 
     d = f"Perform an in-place xas scan for {edge} with energy pattern {energy_grid} \n"
     inner.__doc__ = d + inner.__doc__
