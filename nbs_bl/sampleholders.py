@@ -71,11 +71,6 @@ class SampleHolderBase(Device):
         self.sample_frames.clear()
         self.current_sample.clear()
 
-    def add_current_position_as_sample(self, name, id, description, **kwargs):
-        coordinates = self.position
-        origin = "absolute"
-        self.add_sample(name, id, coordinates, description, origin=origin, **kwargs)
-
     def add_sample(self, name, id, position, description="", origin="holder", **kwargs):
         if origin == "absolute":
             sample_frame = position
@@ -178,6 +173,11 @@ class Manipulator1AxBase(PseudoPositioner, SampleHolderBase):
 
     def __init__(self, *args, origin: float = 0, **kwargs):
         super().__init__(*args, attachment_point=[origin], **kwargs)
+
+    def add_current_position_as_sample(self, name, id, description, **kwargs):
+        coordinates = tuple(self.real_position)
+        origin = "absolute"
+        self.add_sample(name, id, {"coordinates": coordinates}, description, origin=origin, **kwargs)
 
     @pseudo_position_argument
     def forward(self, pp):
@@ -295,6 +295,11 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
             x, y, z = self.manip_frame.to_frame((xp, yp, zp), self.current_frame)
 
         return self.PseudoPosition(x, y, z, r)
+
+    def add_current_position_as_sample(self, name, id, description, **kwargs):
+        coordinates = tuple(self.real_position)
+        origin = "absolute"
+        self.add_sample(name, id, {"coordinates": coordinates}, description, origin=origin, **kwargs)
 
     def move_sample(self, sample_id, **positions):
         if sample_id is not None:
