@@ -1,6 +1,5 @@
 # from ..settings import settings
 from ..plans.scans import nbs_gscan
-from ..plans.scan_decorators import _wrap_xas
 from ..utils import merge_func
 from ..plans.preprocessors import wrap_metadata
 from .plan_stubs import set_roi, clear_one_roi
@@ -31,8 +30,18 @@ def add_to_xas_list(f, key, **plan_info):
     return f
 
 
-def _xas_factory(energy_grid, edge, key):
-    @_wrap_xas(edge)
+def _wrap_xas(element, edge):
+    def decorator(func):
+        return wrap_metadata({"element": element, "edge": edge, "scantype": "xas"})(
+            func
+        )
+
+    return decorator
+
+
+# Needs to have Element, Edge, Ref Element,
+def _xas_factory(energy_grid, element, edge, key):
+    @_wrap_xas(element, edge)
     @wrap_metadata({"plan_name": key})
     @merge_func(nbs_gscan, omit_params=["motor", "args"])
     def inner(**kwargs):
@@ -46,20 +55,22 @@ def _xas_factory(energy_grid, edge, key):
         """
         eref_sample = kwargs.pop("eref_sample", None)
         if eref_sample is None:
-            eref_sample = edge
+            eref_sample = element
         yield from set_roi("pfy", energy_grid[0], energy_grid[-2])
         yield from nbs_gscan(
             GLOBAL_BEAMLINE.energy, *energy_grid, eref_sample=eref_sample, **kwargs
         )
         yield from clear_one_roi("pfy")
 
-    d = f"Perform an in-place xas scan for {edge} with energy pattern {energy_grid} \n"
+    d = f"Perform an in-place xas scan for {element} with energy pattern {energy_grid} \n"
     inner.__doc__ = d + inner.__doc__
 
     inner.__qualname__ = key
     inner.__name__ = key
     inner._edge = edge
-    inner._short_doc = f"Do XAS for {edge} from {energy_grid[0]} to {energy_grid[-2]}"
+    inner._short_doc = (
+        f"Do XAS for {element} from {energy_grid[0]} to {energy_grid[-2]}"
+    )
     return inner
 
 
@@ -87,9 +98,12 @@ def load_xas(filename):
         for key, value in regions.items():
             name = value.get("name", key)
             region = value.get("region")
+            element = value.get("element", "")
             edge = value.get("edge", "")
-            xas_func = _xas_factory(region, edge, key)
-            add_to_xas_list(xas_func, key, name=name, edge=edge, region=region)
+            xas_func = _xas_factory(region, element, edge, key)
+            add_to_xas_list(
+                xas_func, key, name=name, element=element, edge=edge, region=region
+            )
 
             # Store the function
             generated_plans[key] = xas_func

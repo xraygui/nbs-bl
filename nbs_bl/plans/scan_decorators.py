@@ -31,18 +31,25 @@ def _beamline_setup(func):
 
 def _eref_setup(func):
     @merge_func(func)
-    def _inner(*args, eref_sample: Optional[str] = None, **kwargs):
+    def _inner(
+        *args, eref_sample: Optional[str] = None, md: Optional[dict] = None, **kwargs
+    ):
         """
         Parameters
         ----------
         eref_sample : str, optional
             The energy reference sample. If given, the selected reference sample is set
         """
+        md = md or {}
+        _md = {}
         if eref_sample is not None:
             yield from sampleholder_move_sample(
                 GLOBAL_BEAMLINE.reference_sampleholder, eref_sample
             )
-        return (yield from func(*args, **kwargs))
+
+            _md.update({"reference_sample": eref_sample})
+        _md.update(md)
+        return (yield from func(*args, md=_md, **kwargs))
 
     return _inner
 
@@ -128,13 +135,6 @@ def _energy_setup(func):
         return (yield from func(*args, **kwargs))
 
     return _inner
-
-
-def _wrap_xas(element):
-    def decorator(func):
-        return wrap_metadata({"edge": element, "scantype": "xas"})(func)
-
-    return decorator
 
 
 def _nbs_setup_detectors(func):
