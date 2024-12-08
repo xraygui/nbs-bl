@@ -1,7 +1,86 @@
 from IPython.utils.coloransi import TermColors as color
 import sys
-import ansiwrap
+import re
 from select import select
+
+
+def _strip_ansi(text):
+    """
+    Remove ANSI escape sequences from text.
+
+    Parameters
+    ----------
+    text : str
+        Text containing ANSI escape sequences
+
+    Returns
+    -------
+    str
+        Text with ANSI sequences removed
+    """
+    ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+    return ansi_escape.sub("", text)
+
+
+def _ansilen(text):
+    """
+    Get visible length of text containing ANSI escape sequences.
+
+    Parameters
+    ----------
+    text : str
+        Text containing ANSI escape sequences
+
+    Returns
+    -------
+    int
+        Visual length of text
+    """
+    return len(_strip_ansi(text))
+
+
+def _wrap_text(text, width, subsequent_indent=""):
+    """
+    Wrap text while preserving ANSI escape sequences.
+
+    Parameters
+    ----------
+    text : str
+        Text to wrap
+    width : int
+        Maximum line width
+    subsequent_indent : str
+        Indentation for lines after the first
+
+    Returns
+    -------
+    str
+        Wrapped text with preserved ANSI sequences
+    """
+    words = text.split()
+    lines = []
+    current_line = []
+    current_length = 0
+
+    for word in words:
+        word_length = _ansilen(word)
+        if current_length + word_length + (1 if current_line else 0) <= width:
+            current_line.append(word)
+            current_length += word_length + (1 if current_line else 0)
+        else:
+            if current_line:
+                lines.append(" ".join(current_line))
+            current_line = [word]
+            current_length = word_length
+
+    if current_line:
+        lines.append(" ".join(current_line))
+
+    # Add indentation to subsequent lines
+    if subsequent_indent and len(lines) > 1:
+        lines[1:] = [subsequent_indent + line for line in lines[1:]]
+
+    return "\n".join(lines)
 
 
 def colored(text, tint="white", attrs=[]):
@@ -34,6 +113,7 @@ def read_input(message, default, timeout, secs):
     else:
         return timeout
 
+
 def run_report(thisfile):
     """
     Noisily proclaim to be importing a file of python code.
@@ -43,36 +123,47 @@ def run_report(thisfile):
 
 def boxed_text(title, text, tint, width=75, shrink=False):
     """
-    Put text in a lovely unicode block element box.  The top
-    of the box will contain a title.  The box elements will
-    be coloreded.
+    Put text in a lovely unicode block element box.
+
+    Parameters
+    ----------
+    title : str
+        Title to display at top of box
+    text : str or list
+        Text content to display in box
+    tint : str
+        Color to use for box borders
+    width : int
+        Maximum width of box
+    shrink : bool
+        Whether to shrink box to content width
     """
-    if type(text) is str:
+    if isinstance(text, str):
         textlines = text.splitlines()
     else:
         textlines = text
+
     if shrink:
-        width = min(width, max((ansiwrap.ansilen(line) for
-                                line in textlines)))
+        width = min(width, max((_ansilen(line) for line in textlines)))
 
     remainder = width - 5 - len(title)
-    ul = u"\u250C"  # u'\u2554'
-    ur = u"\u2510"  # u'\u2557'
-    ll = u"\u2514"  # u'\u255A'
-    lr = u"\u2518"  # u'\u255D'
-    bar = u"\u2500"  # u'\u2550'
-    strut = u"\u2502"  # u'\u2551'
+    ul = "\u250C"
+    ur = "\u2510"
+    ll = "\u2514"
+    lr = "\u2518"
+    bar = "\u2500"
+    strut = "\u2502"
+
     print("")
-    print(colored("".join([ul, bar * 3, " ", title, " ", bar * remainder, ur]),
-                  tint))
+    print(colored("".join([ul, bar * 3, " ", title, " ", bar * remainder, ur]), tint))
+
     for line1 in textlines:
-        lines = ansiwrap.fill(line1, width, subsequent_indent=" " * 26)
+        lines = _wrap_text(line1, width, subsequent_indent=" " * 26)
         for line in lines.splitlines():
             line = line.rstrip()
-            add = ""
-            add = " " * (width - ansiwrap.ansilen(line))
-            print("".join([colored(strut, tint), line, add,
-                           colored(strut, tint)]))
+            add = " " * (width - _ansilen(line))
+            print("".join([colored(strut, tint), line, add, colored(strut, tint)]))
+
     print(colored("".join([ll, bar * width, lr]), tint))
 
 
