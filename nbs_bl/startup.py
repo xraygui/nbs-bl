@@ -1,25 +1,48 @@
-from bluesky import RunEngine
-from bluesky.plan_stubs import mv, mvr, abs_set
-from bluesky.plan_stubs import mv as move
-from .detectors import (
+from bluesky.plan_stubs import abs_set
+import nbs_bl
+from nbs_bl.hw import *
+from nbs_bl.detectors import (
     list_detectors,
     activate_detector,
     deactivate_detector,
-    plot_detector,
-    unplot_detector,
+    activate_detector_set,
 )
-from .motors import add_motor, list_motors, remove_motor
-from .plans.groups import group
-from .queueserver import request_update, get_status
-from .help import GLOBAL_IMPORT_DICTIONARY, sst_help
-from .re_commands import load_RE_commands
-from bluesky_queueserver import is_re_worker_active
-from .beamline import GLOBAL_BEAMLINE
+from nbs_bl.motors import list_motors
+import nbs_bl.plans.scans
+
+from nbs_bl.run_engine import setup_run_engine, create_run_engine
+
+from nbs_bl.help import GLOBAL_IMPORT_DICTIONARY
+from nbs_bl.plans.groups import group
+from nbs_bl.queueserver import request_update, get_status
+from nbs_bl.samples import list_samples
+from nbs_bl.beamline import GLOBAL_BEAMLINE
+
 
 for key in GLOBAL_IMPORT_DICTIONARY:
     if key not in globals():
         globals()[key] = GLOBAL_IMPORT_DICTIONARY[key]
 
-BL = GLOBAL_BEAMLINE
 
-sst_help()
+def main():
+    print("NBS Startup")
+
+    RE = create_run_engine(setup=True)
+    RE = setup_run_engine(RE)
+
+    if "redis" in GLOBAL_BEAMLINE.settings:
+        import redis
+        from nbs_bl.status import RedisStatusDict
+        from nbs_bl.queueserver import GLOBAL_USER_STATUS
+
+        redis_settings = GLOBAL_BEAMLINE.settings.get("redis").get("md")
+        uri = redis_settings.get("host", "localhost")  # "info.sst.nsls2.bnl.gov"
+        prefix = redis_settings.get("prefix", "")
+        md = RedisStatusDict(redis.Redis(uri), prefix=prefix)
+        GLOBAL_USER_STATUS.add_status("USER_MD", md)
+        RE.md = md
+
+    RE(set_exposure(1.0))
+
+    # load_saved_configuration()
+    activate_detector_set("default")
