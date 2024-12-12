@@ -1,14 +1,12 @@
-from abc import ABC, abstractmethod
 from ophyd import PseudoPositioner, Device, Component as Cpt
 from ophyd.pseudopos import (
     pseudo_position_argument,
     real_position_argument,
-    _to_position_tuple,
     PseudoSingle,
 )
-from nbs_bl.geometry.affine import NullFrame, Frame, find_rotation
+from nbs_bl.geometry.affine import Frame, find_rotation
+from nbs_bl.devices import FlyableMotor
 import numpy as np
-from .queueserver import GLOBAL_USER_STATUS
 import copy
 
 
@@ -177,7 +175,9 @@ class Manipulator1AxBase(PseudoPositioner, SampleHolderBase):
     def add_current_position_as_sample(self, name, id, description, **kwargs):
         coordinates = tuple(self.real_position)
         origin = "absolute"
-        self.add_sample(name, id, {"coordinates": coordinates}, description, origin=origin, **kwargs)
+        self.add_sample(
+            name, id, {"coordinates": coordinates}, description, origin=origin, **kwargs
+        )
 
     @pseudo_position_argument
     def forward(self, pp):
@@ -299,7 +299,9 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
     def add_current_position_as_sample(self, name, id, description, **kwargs):
         coordinates = tuple(self.real_position)
         origin = "absolute"
-        self.add_sample(name, id, {"coordinates": coordinates}, description, origin=origin, **kwargs)
+        self.add_sample(
+            name, id, {"coordinates": coordinates}, description, origin=origin, **kwargs
+        )
 
     def move_sample(self, sample_id, **positions):
         if sample_id is not None:
@@ -338,3 +340,13 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
             self.rotation_ax,
         )
         return r - grazing * 180.0 / np.pi
+
+
+def manipulatorFactory4Ax(xPV, yPV, zPV, rPV):
+    class Manipulator(Manipulator4AxBase):
+        x = Cpt(FlyableMotor, xPV, name="x", kind="hinted")
+        y = Cpt(FlyableMotor, yPV, name="y", kind="hinted")
+        z = Cpt(FlyableMotor, zPV, name="z", kind="hinted")
+        r = Cpt(FlyableMotor, rPV, name="r", kind="hinted")
+
+    return Manipulator
