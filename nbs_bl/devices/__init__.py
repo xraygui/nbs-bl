@@ -7,3 +7,4 @@ from .motors import (
 )
 from .shutters import EPS_Shutter, ShutterSet
 from .slits import Slits
+from .sampleholders import Manipulator1AxBase, Manipulator4AxBase

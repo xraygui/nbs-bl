@@ -21,27 +21,12 @@ class EnergyMonitor(QGroupBox):
 
     def __init__(self, energy, parent_model, *args, orientation=None, **kwargs):
         super().__init__("Energy Monitor", *args, **kwargs)
-        hbox = QHBoxLayout()
         vbox1 = QVBoxLayout()
-        for m in energy.energy.pseudo_axes_models:
-            vbox1.addWidget(MotorMonitor(m, parent_model))
-        vbox1.addWidget(
-            MotorMonitor(parent_model.beamline.motors["eslit"], parent_model)
-        )
+        vbox1.addWidget(AutoMonitor(energy.energy, parent_model))
+        vbox1.addWidget(AutoMonitor(parent_model.beamline.slits, parent_model))
         vbox1.addWidget(AutoMonitor(energy.cff, parent_model))
         vbox1.addWidget(MotorMonitor(energy.grating_motor, parent_model))
-        vbox2 = QVBoxLayout()
-        for m in energy.energy.real_axes_models:
-            vbox2.addWidget(MotorMonitor(m, parent_model))
-        vbox3 = QVBoxLayout()
-        for p in energy.energy.pseudo_axes_models:
-            vbox3.addWidget(MotorMonitor(p, parent_model))
-        hbox2 = QHBoxLayout()
-        hbox2.addLayout(vbox2)
-        hbox2.addLayout(vbox3)
-        hbox.addLayout(vbox1)
-        hbox.addLayout(hbox2)
-        self.setLayout(hbox)
+        self.setLayout(vbox1)
 
 
 class EnergyControl(QGroupBox):
@@ -53,31 +38,20 @@ class EnergyControl(QGroupBox):
         self.REClientModel = parent_model.run_engine
         print("Creating Energy Control Vbox")
         vbox = QVBoxLayout()
-        vbox2 = QVBoxLayout()
-        vbox3 = QVBoxLayout()
         hbox = QHBoxLayout()
         print("Creating Energy Motor")
-        for m in energy.energy.pseudo_axes_models:
-            vbox2.addWidget(MotorControl(m, parent_model))
+        vbox.addWidget(AutoControl(energy.energy, parent_model))
         print("Creating Exit Slit")
-        vbox2.addWidget(
-            MotorControl(parent_model.beamline.motors["eslit"], parent_model)
-        )
-        for p in energy.energy.real_axes_models:
-            vbox3.addWidget(MotorControl(p, parent_model))
-        # vbox.addWidget(PseudoManipulatorControl(energy.energy, parent_model))
 
-        hbox.addLayout(vbox2)
-        hbox.addLayout(vbox3)
-        vbox.addLayout(hbox)
-        hbox2 = QHBoxLayout()
-        hbox2.addWidget(AutoMonitor(energy.cff, parent_model))
-        hbox2.addWidget(AutoMonitor(energy.grating_motor, parent_model))
+        vbox.addWidget(AutoControl(parent_model.beamline.slits, parent_model))
+        hbox = QHBoxLayout()
+        hbox.addWidget(AutoMonitor(energy.cff, parent_model))
+        hbox.addWidget(AutoMonitor(energy.grating_motor, parent_model))
 
         self.advancedControlButton = QPushButton("Advanced Controls")
         self.advancedControlButton.clicked.connect(self.showAdvancedControls)
-        hbox2.addWidget(self.advancedControlButton)
-        vbox.addLayout(hbox2)
+        hbox.addWidget(self.advancedControlButton)
+        vbox.addLayout(hbox)
         self.setLayout(vbox)
 
     def showAdvancedControls(self):

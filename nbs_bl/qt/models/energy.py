@@ -1,5 +1,5 @@
 from ..widgets.energy import EnergyControl, EnergyMonitor
-from nbs_gui.models import EnergyAxesModel, PVPositionerModel, PVModel
+from nbs_gui.models import PseudoPositionerModel, PVPositionerModel, PVModel
 
 
 # Copied from ucal as an example
@@ -18,7 +18,7 @@ class EnergyModel:
         print("Initializing Energy")
         self.name = name
         self.obj = obj
-        self.energy = EnergyAxesModel(name, obj, group, name)
+        self.energy = PseudoPositionerModel(name, obj, group, name)
         self.grating_motor = PVPositionerModel(
             name=obj.monoen.gratingx.name,
             obj=obj.monoen.gratingx,
