@@ -6,6 +6,7 @@ from ophyd import EpicsMotor, Signal, PositionerBase, Device
 from ophyd.pv_positioner import PVPositioner
 from ophyd import Component as Cpt
 from ophyd.status import wait as status_wait, DeviceStatus
+from ophyd import PseudoSingle as _PS
 
 
 class FlyerMixin:
@@ -214,3 +215,16 @@ class DeadbandPVPositioner(DeadbandMixin, PVPositioner):
 
 class FlyableMotor(EpicsMotor, FlyerMixin):
     pass
+
+
+class PseudoSingle(_PS):
+    """
+    A PseudoSingle subclass that casts positions to a float in order to ensure
+    that motor values don't get interpreted as int by Bluesky/Tiled.
+
+    If the first motor value is an int (i.e, 700 eV for the mono), Tiled will
+    try to cast all subsequent motor positions to an int as well.
+    """
+
+    def move(self, position, *args, **kwargs):
+        return super().move(float(position), *args, **kwargs)

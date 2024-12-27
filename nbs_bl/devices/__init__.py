@@ -4,6 +4,8 @@ from .motors import (
     DeadbandEpicsMotor,
     DeadbandPVPositioner,
     DeadbandMixin,
+    PseudoSingle,
+    FlyerMixin,
 )
 from .shutters import EPS_Shutter, ShutterSet
 from .slits import Slits
