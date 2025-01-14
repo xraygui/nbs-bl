@@ -1,24 +1,21 @@
-from .status import StatusDict, StatusList
 from .queueserver import GLOBAL_USER_STATUS
-from nbs_core.autoload import loadFromConfig, instantiateOphyd
 from .printing import boxed_text
+from nbs_core.autoload import loadFromConfig as _loadFromConfig
 
 
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
-
-
-def _load_hardware(config_file, namespace=None, **kwargs):
-    print(f"Attempting to load objects in {config_file}")
-    with open(config_file, "rb") as f:
-        config = tomllib.load(f)
-    devices, groups, roles = loadFromConfig(
-        config, instantiateOphyd, alias=True, namespace=namespace, **kwargs
+def loadFromConfig(
+    config,
+    instantiateDevice,
+    alias=True,
+    namespace=None,
+    load_pass="auto",
+    filter_deferred=True,
+):
+    devices, groups, roles = _loadFromConfig(
+        config, instantiateDevice, alias, namespace, load_pass, filter_deferred
     )
-    for key, dev in devices.items():
-        globals()[key] = dev
+    for key, device in devices.items():
+        globals()[key] = device
     return devices, groups, roles
 
 

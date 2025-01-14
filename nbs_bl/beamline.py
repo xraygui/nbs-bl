@@ -1,7 +1,8 @@
 from bluesky.preprocessors import SupplementalData
 from .queueserver import GLOBAL_USER_STATUS
 from .status import StatusDict
-from .hw import HardwareGroup, DetectorGroup, _load_hardware
+from .hw import HardwareGroup, DetectorGroup, loadFromConfig
+from nbs_core.autoload import instantiateOphyd, _find_deferred_devices
 from os.path import join, exists
 
 try:
@@ -70,6 +71,10 @@ class BeamlineModel:
         self.detectors = DetectorGroup("detectors")
         self.motors = HardwareGroup("motors")
 
+        # Storage for deferred devices
+        self._deferred_config = {}
+        self._deferred_devices = set()
+
         # Initialize empty dictionaries for each default group
         for group in self.default_groups:
             if not hasattr(self, group):
@@ -101,6 +106,44 @@ class BeamlineModel:
         self.settings.update(settings_dict)
         print(f"Loading Settings {self.settings}")
 
+    def load_configuration(self, startup_dir):
+        """
+        Load and merge configuration files.
+
+        Parameters
+        ----------
+        startup_dir : str
+            Directory containing configuration files
+
+        Returns
+        -------
+        dict
+            Device configuration dictionary
+        """
+        object_file = join(startup_dir, self.settings["device_filename"])
+        beamline_file = join(startup_dir, self.settings["beamline_filename"])
+
+        with open(beamline_file, "rb") as f:
+            beamline_config = tomllib.load(f)
+
+        with open(object_file, "rb") as f:
+            object_config = tomllib.load(f)
+
+        # Store merged configuration
+        self.config.update(beamline_config)
+        self.config["devices"] = object_config
+
+        # Handle Redis settings
+        self.load_redis()
+        tmp_settings = GLOBAL_USER_STATUS.request_status_dict(
+            "SETTINGS", use_redis=True
+        )
+        tmp_settings.update(self.settings)
+        self.settings = tmp_settings
+        print(f"Settings from Redis: {self.settings}")
+
+        return object_config
+
     def load_beamline(self, startup_dir, ns=None):
         """
         Load and configure the beamline from the startup directory.
@@ -112,66 +155,188 @@ class BeamlineModel:
         ns : dict, optional
             Namespace for loading devices
         """
+        # Phase 1: Load settings
         settings_file = join(startup_dir, "beamline.toml")
         self.load_settings(settings_file)
         self.settings["startup_dir"] = startup_dir
-        object_file = join(startup_dir, self.settings["device_filename"])
-        beamline_file = join(startup_dir, self.settings["beamline_filename"])
 
-        with open(beamline_file, "rb") as f:
-            beamline_config = tomllib.load(f)
+        # Phase 2: Load and merge configurations
+        object_config = self.load_configuration(startup_dir)
 
-        devices, groups, roles = _load_hardware(object_file, ns, load_pass="auto")
-        self.config.update(beamline_config)
-        self.load_redis()
-        tmp_settings = GLOBAL_USER_STATUS.request_status_dict(
-            "SETTINGS", use_redis=True
-        )
-        tmp_settings.update(self.settings)
-        self.settings = tmp_settings
-        print(f"Settings from Redis: {self.settings}")
-        self.load_devices(devices, groups, roles, beamline_config)
+        # Phase 3: Load and register devices
+        self.load_devices(object_config, ns)
 
-    def load_devices(self, devices, groups, roles, config):
-        self.config.update(config)
+    def register_devices(self, devices, groups, roles):
+        """
+        Handle device registration and grouping.
+
+        Parameters
+        ----------
+        devices : dict
+            Dictionary of instantiated devices
+        groups : dict
+            Dictionary mapping group names to lists of device names
+        roles : dict
+            Dictionary mapping role names to device names
+        """
         self.devices.update(devices)
+
         for groupname, devicelist in groups.items():
             self._configure_group(groupname, devicelist)
-        print(roles)
+
         for role, key in roles.items():
-            if role in self.reserved:
-                raise KeyError(f"Key {role} is reserved, use a different role name")
-            if role != "":
-                if role not in self.roles:
-                    self.roles.append(role)
-                print(f"Setting {role} to {key}")
-                setattr(self, role, devices[key])
-            if role == "primary_sampleholder":
-                tmp_samples = GLOBAL_USER_STATUS.request_status_dict(
-                    "GLOBAL_SAMPLES", use_redis=True
-                )
-                tmp_samples.update(self.primary_sampleholder.samples)
-                self.primary_sampleholder.samples = tmp_samples
-                tmp_current = GLOBAL_USER_STATUS.request_status_dict(
-                    "GLOBAL_SELECTED", use_redis=True
-                )
-                tmp_current.update(self.primary_sampleholder.current_sample)
-                self.primary_sampleholder.current_sample = tmp_current
-                self.samples = self.primary_sampleholder.samples
-                self.current_sample = self.primary_sampleholder.current_sample
-                self.primary_sampleholder.reload_sample_frames()
-            elif role == "reference_sampleholder":
-                tmp_samples = GLOBAL_USER_STATUS.request_status_dict(
-                    "REFERENCE_SAMPLES", use_redis=True
-                )
-                tmp_samples.update(self.reference_sampleholder.samples)
-                self.reference_sampleholder.samples = tmp_samples
-                tmp_current = GLOBAL_USER_STATUS.request_status_dict(
-                    "REFERENCE_SELECTED", use_redis=True
-                )
-                tmp_current.update(self.reference_sampleholder.current_sample)
-                self.reference_sampleholder.current_sample = tmp_current
-                self.reference_sampleholder.reload_sample_frames()
+            self._configure_role(role, key)
+
+    def _configure_role(self, role, key):
+        """
+        Handle role assignment and special device setup.
+
+        Parameters
+        ----------
+        role : str
+            Role name to configure
+        key : str
+            Device key to assign to the role
+        """
+        if role in self.reserved:
+            raise KeyError(f"Key {role} is reserved, use a different role name")
+        if role != "":
+            if role not in self.roles:
+                self.roles.append(role)
+            print(f"Setting {role} to {key}")
+            setattr(self, role, self.devices[key])
+
+    def handle_special_devices(self, roles):
+        """
+        Handle special device setup, particularly sampleholders.
+
+        Parameters
+        ----------
+        roles : dict
+            Dictionary mapping role names to device names
+        """
+        if "primary_sampleholder" in roles:
+            self._setup_sampleholder(
+                self.primary_sampleholder,
+                "GLOBAL_SAMPLES",
+                "GLOBAL_SELECTED",
+                is_primary=True,
+            )
+        if "reference_sampleholder" in roles:
+            self._setup_sampleholder(
+                self.reference_sampleholder,
+                "REFERENCE_SAMPLES",
+                "REFERENCE_SELECTED",
+                is_primary=False,
+            )
+
+    def _setup_sampleholder(self, holder, samples_key, current_key, is_primary=False):
+        """
+        Set up a sampleholder with Redis data.
+
+        Parameters
+        ----------
+        holder : object
+            The sampleholder device to set up
+        samples_key : str
+            Redis key for samples data
+        current_key : str
+            Redis key for current sample data
+        is_primary : bool, optional
+            Whether this is the primary sampleholder
+        """
+        tmp_samples = GLOBAL_USER_STATUS.request_status_dict(
+            samples_key, use_redis=True
+        )
+        tmp_samples.update(holder.samples)
+        holder.samples = tmp_samples
+
+        tmp_current = GLOBAL_USER_STATUS.request_status_dict(
+            current_key, use_redis=True
+        )
+        tmp_current.update(holder.current_sample)
+        holder.current_sample = tmp_current
+
+        if is_primary:
+            self.samples = holder.samples
+            self.current_sample = holder.current_sample
+
+        holder.reload_sample_frames()
+
+    def load_devices(self, config, ns=None):
+        """
+        Load and register devices from configuration.
+
+        Parameters
+        ----------
+        config : dict
+            Device configuration dictionary
+        ns : dict, optional
+            Namespace for loading devices
+        """
+        # Find deferred devices for tracking
+        _, _, deferred_config = _find_deferred_devices(config)
+
+        # Load non-deferred devices
+        devices, groups, roles = loadFromConfig(
+            config, instantiateOphyd, alias=True, namespace=ns, load_pass="auto"
+        )
+
+        # Update deferred device tracking
+        if deferred_config:
+            self._deferred_config.update(deferred_config)
+            self._deferred_devices.update(deferred_config.keys())
+        # Remove loaded devices from deferred tracking
+        for device_name in devices:
+            self._deferred_config.pop(device_name, None)
+            self._deferred_devices.discard(device_name)
+
+        # Register devices and handle special cases
+        self.register_devices(devices, groups, roles)
+        self.handle_special_devices(roles)
+
+    def load_deferred_device(self, device_name, ns=None):
+        """
+        Load a specific deferred device and its dependencies.
+        If an alias is requested, loads its root device.
+
+        Parameters
+        ----------
+        device_name : str
+            Name of the device to load
+
+        Returns
+        -------
+        object
+            The loaded device
+
+        Raises
+        ------
+        KeyError
+            If the device is not in the deferred devices list
+        RuntimeError
+            If loading the device fails
+        """
+        if device_name not in self._deferred_devices:
+            raise KeyError(f"Device {device_name} is not in deferred devices")
+
+        # If it's an alias, get and load the root device
+        config = self._deferred_config.get(device_name, {})
+        if isinstance(config, dict) and "_alias" in config:
+            root_device = config["_alias"].split(".")[0]
+            if root_device != device_name:  # Prevent recursion
+                return self.load_deferred_device(root_device, ns)
+
+        # Create config with just this device and its dependencies
+        self._deferred_config[device_name]["_defer_loading"] = False
+
+        try:
+            # Load the device using the main loading function
+            self.load_devices(self._deferred_config, ns)
+
+            return self.devices.get(device_name)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load device {device_name}: {e}") from e
 
     def load_redis(self):
         redis_settings = (
@@ -231,6 +396,83 @@ class BeamlineModel:
             )
             if should_add_to_baseline:
                 self.add_to_baseline(key, False)
+
+    def get_deferred_devices(self):
+        """Return set of currently deferred devices."""
+        return self._deferred_devices.copy()
+
+    def is_device_deferred(self, device_name):
+        """Check if a device is currently deferred."""
+        return device_name in self._deferred_devices
+
+    def defer_device(self, device_name):
+        """
+        Move a loaded device to deferred state.
+
+        Parameters
+        ----------
+        device_name : str
+            Name of the device to defer
+
+        Raises
+        ------
+        KeyError
+            If the device is not loaded or already deferred
+        RuntimeError
+            If the device cannot be deferred
+        """
+        if device_name not in self.devices:
+            raise KeyError(f"Device {device_name} is not loaded")
+        if device_name in self._deferred_devices:
+            raise KeyError(f"Device {device_name} is already deferred")
+
+        # Get device's configuration
+        device_config = self.config["devices"].get(device_name)
+        if not device_config:
+            raise RuntimeError(f"No configuration found for device {device_name}")
+
+        # Update configuration to defer loading
+        device_config["_defer_loading"] = True
+
+        deferred_devices, _, deferred_config = _find_deferred_devices(
+            self.config["devices"]
+        )
+
+        self._deferred_config.update(deferred_config)
+        self._deferred_devices.update(deferred_devices)
+
+        # Remove from groups
+        for newly_deferred in deferred_devices:
+            for group in self.groups:
+                group_obj = getattr(self, group)
+                if newly_deferred in group_obj.devices:
+                    group_obj.remove(newly_deferred)
+
+            # Remove from roles
+            for role in self.roles:
+                if (
+                    hasattr(self, role)
+                    and getattr(self, role) == self.devices[newly_deferred]
+                ):
+                    setattr(self, role, None)
+
+            # Remove from baseline if present
+            device = self.devices[newly_deferred]
+            if device in self.supplemental_data.baseline:
+                self.supplemental_data.baseline.remove(device)
+
+            # Remove from devices registry
+            self.devices.pop(newly_deferred)
+
+        return device_name
+
+    def __getitem__(self, key):
+        """Allow dictionary-like access to devices."""
+        return self.devices[key]
+
+    def __setitem__(self, key, value):
+        """Allow dictionary-like setting of devices."""
+        self.devices[key] = value
 
 
 GLOBAL_BEAMLINE = BeamlineModel()
