@@ -78,13 +78,13 @@ class EnergyControl(QGroupBox):
         self.REClientModel = parent_model.run_engine
 
         print("Creating Energy Control layout")
-        vbox = QVBoxLayout()
         hbox = QHBoxLayout()
-        ebox = QHBoxLayout()
+        ebox = QVBoxLayout()
+        hbox2 = QHBoxLayout()
 
         print("Adding energy control")
         if hasattr(energy, "energy"):
-            ebox.addWidget(AutoControl(energy.energy, parent_model))
+            hbox.addWidget(AutoControl(energy.energy, parent_model))
 
         has_slits = (
             hasattr(parent_model.beamline, "slits")
@@ -94,20 +94,18 @@ class EnergyControl(QGroupBox):
             print("Adding exit slit control")
             ebox.addWidget(AutoControl(parent_model.beamline.slits, parent_model))
 
-        vbox.addLayout(ebox)
-        hbox = QHBoxLayout()
-
         print("Adding CFF and grating monitors")
         if hasattr(energy, "cff"):
-            hbox.addWidget(AutoMonitor(energy.cff, parent_model))
+            hbox2.addWidget(AutoMonitor(energy.cff, parent_model))
         if hasattr(energy, "grating_motor"):
-            hbox.addWidget(AutoMonitor(energy.grating_motor, parent_model))
+            hbox2.addWidget(AutoMonitor(energy.grating_motor, parent_model))
 
         self.advancedControlButton = QPushButton("Advanced Controls")
         self.advancedControlButton.clicked.connect(self.showAdvancedControls)
-        hbox.addWidget(self.advancedControlButton)
-        vbox.addLayout(hbox)
-        self.setLayout(vbox)
+        hbox2.addWidget(self.advancedControlButton)
+        ebox.addLayout(hbox2)
+        hbox.addLayout(ebox)
+        self.setLayout(hbox)
         print("EnergyControl initialization complete")
 
     def showAdvancedControls(self):
