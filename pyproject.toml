@@ -10,6 +10,9 @@ authors = [
 description = "Beamline Framework"
 dynamic = ["version", "dependencies"]
 
+[project.urls]
+homepage = "https://github.com/xraygui/nbs-bl"
+
 [tool.setuptools]
 packages = ["nbs_bl"]
 

@@ -16,6 +16,8 @@ def _add_to_import_list(f, help_section):
     """
     key = f.__name__
     doc = f.__doc__ if f.__doc__ is not None else "No Docstring yet!"
+    if help_section not in GLOBAL_HELP_DICTIONARY:
+        GLOBAL_HELP_DICTIONARY[help_section] = {}
     GLOBAL_HELP_DICTIONARY[help_section][key] = doc
     GLOBAL_IMPORT_DICTIONARY[key] = f
     return key
