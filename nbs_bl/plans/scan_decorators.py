@@ -15,6 +15,13 @@ from .groups import repeat
 from typing import Optional
 
 
+def wrap_scantype(scantype):
+    def decorator(func):
+        return wrap_metadata({"scantype": scantype})(func)
+
+    return decorator
+
+
 def _beamline_setup(func):
     blconf = GLOBAL_BEAMLINE.config.get("configuration", {})
     if blconf.get("has_slits", False):
