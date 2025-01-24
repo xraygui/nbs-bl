@@ -30,8 +30,7 @@ def _beamline_setup(func):
         func = _sample_setup_with_move(func)
     else:
         func = _sample_setup_no_move(func)
-    if blconf.get("has_motorized_eref", False):
-        func = _eref_setup(func)
+    func = _eref_setup(func)
     func = _energy_setup(func)
     return func
 
@@ -49,7 +48,8 @@ def _eref_setup(func):
         """
         md = md or {}
         _md = {}
-        if eref_sample is not None:
+        blconf = GLOBAL_BEAMLINE.config.get("configuration", {})
+        if eref_sample is not None and blconf.get("has_motorized_eref", False):
             yield from sampleholder_move_sample(
                 GLOBAL_BEAMLINE.reference_sampleholder, eref_sample
             )
