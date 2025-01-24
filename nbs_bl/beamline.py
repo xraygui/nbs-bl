@@ -2,7 +2,7 @@ from bluesky.preprocessors import SupplementalData
 from .queueserver import GLOBAL_USER_STATUS
 from .status import StatusDict
 from .hw import HardwareGroup, DetectorGroup, loadFromConfig
-from nbs_core.autoload import instantiateOphyd, _find_deferred_devices
+from nbs_core.autoload import instantiateOphyd, _find_deferred_devices, getMaxLoadPass
 from os.path import join, exists
 
 try:
@@ -263,7 +263,7 @@ class BeamlineModel:
 
         holder.reload_sample_frames()
 
-    def load_devices(self, config, ns=None):
+    def load_devices(self, config, ns=None, load_pass=None):
         """
         Load and register devices from configuration.
 
@@ -274,12 +274,16 @@ class BeamlineModel:
         ns : dict, optional
             Namespace for loading devices
         """
+        if load_pass is None:
+            max_load_pass = getMaxLoadPass(config)
+            for pass_num in range(1, max_load_pass + 1):
+                self.load_devices(config, ns, load_pass=pass_num)
         # Find deferred devices for tracking
         _, _, deferred_config = _find_deferred_devices(config)
 
         # Load non-deferred devices
         devices, groups, roles = loadFromConfig(
-            config, instantiateOphyd, alias=True, namespace=ns, load_pass="auto"
+            config, instantiateOphyd, alias=True, namespace=ns, load_pass=load_pass
         )
 
         # Update deferred device tracking
