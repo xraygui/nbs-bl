@@ -29,15 +29,17 @@ def load_plans(startup_dir):
         Directory containing plan configuration files
     """
     plan_settings = GLOBAL_BEAMLINE.settings.get("plans", {})
-
+    print(f"Loading plans from {startup_dir}")
     # Iterate through all registered plan loaders
     for entry_point in pkg_resources.iter_entry_points(group="nbs_bl.plan_loaders"):
         plan_type = entry_point.name
+        print(f"Loading {plan_type} plans")
         plan_files = plan_settings.get(plan_type, [])
 
         if not plan_files:
+            print(f"No {plan_type} plans found")
             continue
-
+        print(f"Loading {plan_type} plans from {plan_files}")
         # Load the plan loader function
         plan_loader = entry_point.load()
 
