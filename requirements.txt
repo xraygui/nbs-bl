@@ -4,4 +4,4 @@ ophyd
 numpy
 ipython
 toml
-nbs-core
+git+https://github.com/xraygui/nbs-core.git
