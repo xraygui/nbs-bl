@@ -1,0 +1,29 @@
+site_name: NBS-BL Documentation
+site_description: Documentation for the NSLS-II Beamline Support Library
+repo_url: https://github.com/xraygui/nbs-bl
+theme:
+  name: material
+  palette:
+    primary: indigo
+    accent: deep purple
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - toc.follow
+
+nav:
+  - Home: index.md
+  - Configuration:
+    - Reference: configuration_reference.md
+    - Templates:
+      - Beamline Template: template_beamline.toml
+      - Devices Template: template_devices.toml
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition
+  - toc:
+      permalink: true 
