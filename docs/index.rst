@@ -27,6 +27,7 @@ Documentation
    :maxdepth: 2
    :caption: Contents:
 
+   overview
    configuration_reference
    api/index
 

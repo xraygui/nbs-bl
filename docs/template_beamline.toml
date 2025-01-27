@@ -1,0 +1,39 @@
+# Template beamline.toml file
+# Copy this file and modify according to your beamline's needs
+
+[configuration]
+# List of devices to include in baseline readings
+baseline = []
+
+# Core beamline capabilities
+has_slits = false
+has_motorized_samples = false
+has_motorized_eref = false
+has_polarization = false
+
+[detector_sets.default]
+# Define your default detector configuration
+primary = ""
+normalization = ""
+reference = ""
+
+[settings]
+# List Python modules to load at startup
+modules = []
+
+# Plan configuration files
+[settings.plans]
+scan_plans = []
+alignment = []
+
+# Redis configuration for metadata
+[settings.redis.md]
+host = "redis"
+prefix = "my_beamline"
+
+# Redis configuration for info
+[settings.redis.info]
+host = "redisInfo"
+prefix = ""
+port = 60737
+db = 4 

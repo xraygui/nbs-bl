@@ -39,24 +39,27 @@ General beamline settings and module configuration.
 ```toml
 [settings]
 # Python modules to load at startup
-modules = ["haxpes.startup", "rsoxs.startup"]
+# nbs_bl provides a default, but you should
+# define your own in your beamline's code package
+modules = ["nbs_bl.startup"]
 
-# Plan-specific settings
+# Plan load files, located in the ipython startup directory
+# Keys should correspond to entrypoints in the beamline's code package
 [settings.plans]
-scan_plans = ["plans/xas.toml", "plans/xps.toml"]
-alignment = ["plans/alignment.toml"]
+xas = ["xas.toml"]
+xps = ["xps.toml"]
 
-# Redis metadata configuration
+# Redis configuration for RE.md
 [settings.redis.md]
 host = "redis"
 prefix = "beamline_name"
 
-# Redis info configuration
+# Redis configuration for other metadata to share with QueueServer
 [settings.redis.info]
 host = "redisInfo"
 prefix = ""
 port = 60737
-db = 4
+db = 1
 ```
 
 ## devices.toml Reference
