@@ -1,0 +1,1194 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation for the NSLS-II Beamline Support Library">
+      
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.50">
+    
+    
+      
+        <title>Reference - NBS-BL Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.a40c8224.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#beamline-configuration-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="NBS-BL Documentation" class="md-header__button md-logo" aria-label="NBS-BL Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            NBS-BL Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/xraygui/nbs-bl" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="NBS-BL Documentation" class="md-nav__button md-logo" aria-label="NBS-BL Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    NBS-BL Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/xraygui/nbs-bl" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Configuration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Configuration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#beamlinetoml-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      beamline.toml Reference
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="beamline.toml Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Section
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detector-sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Detector Sets
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Settings
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#devicestoml-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      devices.toml Reference
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="devices.toml Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#device-configuration-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device Configuration Format
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-device-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Device Types
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Device Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#motors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Motors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detectors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Detectors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sample-holders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sample Holders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shutters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Shutters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#device-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device Organization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deferred-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deferred Loading
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#device-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device Groups
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#device-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device Roles
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#redis-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Redis Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Validation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-issues-and-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Issues and Solutions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Issues and Solutions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#device-loading-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device Loading Failures
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#redis-connectivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Redis Connectivity
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#group-and-role-conflicts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Group and Role Conflicts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Templates
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Templates
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../template_beamline.toml" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Beamline Template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../template_devices.toml" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Devices Template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#beamlinetoml-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      beamline.toml Reference
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="beamline.toml Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Section
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detector-sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Detector Sets
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Settings
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#devicestoml-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      devices.toml Reference
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="devices.toml Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#device-configuration-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device Configuration Format
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-device-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Device Types
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Device Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#motors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Motors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detectors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Detectors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sample-holders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sample Holders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shutters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Shutters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#device-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device Organization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deferred-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deferred Loading
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#device-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device Groups
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#device-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device Roles
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#redis-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Redis Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Validation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-issues-and-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Issues and Solutions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Issues and Solutions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#device-loading-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Device Loading Failures
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#redis-connectivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Redis Connectivity
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#group-and-role-conflicts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Group and Role Conflicts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="beamline-configuration-reference">Beamline Configuration Reference<a class="headerlink" href="#beamline-configuration-reference" title="Permanent link">&para;</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The beamline configuration system uses TOML files to define the hardware, settings, and behavior of a beamline. The configuration is split into two main files:
+- <code>beamline.toml</code>: Core beamline settings and capabilities
+- <code>devices.toml</code>: Hardware device definitions and properties</p>
+<h2 id="beamlinetoml-reference">beamline.toml Reference<a class="headerlink" href="#beamlinetoml-reference" title="Permanent link">&para;</a></h2>
+<h3 id="configuration-section">Configuration Section<a class="headerlink" href="#configuration-section" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">[configuration]</span>
+<span class="c1"># List of devices to include in baseline readings</span>
+<span class="n">baseline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;motor1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;detector1&quot;</span><span class="p">]</span>
+
+<span class="c1"># Core beamline capabilities</span>
+<span class="n">has_slits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">          </span><span class="c1"># Whether beamline has slit devices</span>
+<span class="n">has_motorized_samples</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">    </span><span class="c1"># Whether beamline has motorized sample stages</span>
+<span class="n">has_motorized_eref</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="w">     </span><span class="c1"># Whether beamline has motorized energy reference</span>
+<span class="n">has_polarization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="w">       </span><span class="c1"># Whether beamline has polarization control</span>
+</code></pre></div>
+<h3 id="detector-sets">Detector Sets<a class="headerlink" href="#detector-sets" title="Permanent link">&para;</a></h3>
+<p>Define groups of detectors that are commonly used together.
+<div class="highlight"><pre><span></span><code><span class="k">[detector_sets.default]</span>
+<span class="n">primary</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;main_detector&quot;</span><span class="w">        </span><span class="c1"># Primary detector for measurements</span>
+<span class="n">normalization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;i0&quot;</span><span class="w">            </span><span class="c1"># Detector used for normalization</span>
+<span class="n">reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ir&quot;</span><span class="w">                </span><span class="c1"># Reference detector</span>
+
+<span class="k">[detector_sets.transmission]</span>
+<span class="n">primary</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;it&quot;</span>
+<span class="n">normalization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;i0&quot;</span>
+<span class="n">reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ir&quot;</span>
+</code></pre></div></p>
+<h3 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h3>
+<p>General beamline settings and module configuration.
+<div class="highlight"><pre><span></span><code><span class="k">[settings]</span>
+<span class="c1"># Python modules to load at startup</span>
+<span class="n">modules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;haxpes.startup&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;rsoxs.startup&quot;</span><span class="p">]</span>
+
+<span class="c1"># Plan-specific settings</span>
+<span class="k">[settings.plans]</span>
+<span class="n">scan_plans</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;plans/xas.toml&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;plans/xps.toml&quot;</span><span class="p">]</span>
+<span class="n">alignment</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;plans/alignment.toml&quot;</span><span class="p">]</span>
+
+<span class="c1"># Redis metadata configuration</span>
+<span class="k">[settings.redis.md]</span>
+<span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;redis&quot;</span>
+<span class="n">prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;beamline_name&quot;</span>
+
+<span class="c1"># Redis info configuration</span>
+<span class="k">[settings.redis.info]</span>
+<span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;redisInfo&quot;</span>
+<span class="n">prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60737</span>
+<span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span>
+</code></pre></div></p>
+<h2 id="devicestoml-reference">devices.toml Reference<a class="headerlink" href="#devicestoml-reference" title="Permanent link">&para;</a></h2>
+<h3 id="device-configuration-format">Device Configuration Format<a class="headerlink" href="#device-configuration-format" title="Permanent link">&para;</a></h3>
+<p>Each device entry follows this general structure:
+<div class="highlight"><pre><span></span><code><span class="k">[device_name]</span>
+<span class="c1"># Required fields</span>
+<span class="n">_target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;package.module.DeviceClass&quot;</span><span class="w">  </span><span class="c1"># Python class to instantiate</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;human_readable_name&quot;</span><span class="w">            </span><span class="c1"># Display name</span>
+<span class="n">prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;PV:PREFIX:&quot;</span><span class="w">                   </span><span class="c1"># EPICS PV prefix</span>
+
+<span class="c1"># Optional fields</span>
+<span class="n">_defer_loading</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="w">                  </span><span class="c1"># Whether to defer device loading</span>
+<span class="n">_add_to_ns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">                       </span><span class="c1"># Add to IPython namespace</span>
+<span class="n">description</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Device description&quot;</span><span class="w">      </span><span class="c1"># Human-readable description</span>
+
+<span class="c1"># Group membership</span>
+<span class="n">groups</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;motors&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;detectors&quot;</span><span class="p">]</span><span class="w">        </span><span class="c1"># Device groups</span>
+<span class="n">roles</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;primary_detector&quot;</span><span class="p">]</span><span class="w">            </span><span class="c1"># Device roles</span>
+
+<span class="c1"># Device-specific parameters</span>
+<span class="n">param1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">value</span><span class="mi">1</span>
+<span class="n">param2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">value</span><span class="mi">2</span>
+</code></pre></div></p>
+<h3 id="common-device-types">Common Device Types<a class="headerlink" href="#common-device-types" title="Permanent link">&para;</a></h3>
+<h4 id="motors">Motors<a class="headerlink" href="#motors" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="k">[sample_x]</span>
+<span class="n">_target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nbs_bl.devices.motors.DeadbandEpicsMotor&quot;</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Sample X&quot;</span>
+<span class="n">prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;MOTOR:X:&quot;</span>
+<span class="n">groups</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;motors&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sample_motors&quot;</span><span class="p">]</span>
+<span class="n">tolerance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.1</span>
+<span class="n">baseline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+</code></pre></div>
+<h4 id="detectors">Detectors<a class="headerlink" href="#detectors" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="k">[main_detector]</span>
+<span class="n">_target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nbs_bl.devices.detectors.ophScalar&quot;</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Main Detector&quot;</span>
+<span class="n">prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;DET:MAIN:&quot;</span>
+<span class="n">groups</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;detectors&quot;</span><span class="p">]</span>
+<span class="n">roles</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;primary&quot;</span><span class="p">]</span>
+<span class="n">description</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Main measurement detector&quot;</span>
+<span class="n">rescale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span>
+</code></pre></div>
+<h4 id="sample-holders">Sample Holders<a class="headerlink" href="#sample-holders" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="k">[sample_holder]</span>
+<span class="n">_target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nbs_bl.devices.sampleholders.Manipulator4AxBase&quot;</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Sample Manipulator&quot;</span>
+<span class="n">prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;MANIP:&quot;</span>
+<span class="n">attachment_point</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">]</span>
+<span class="n">beam_direction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">-1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">]</span>
+<span class="n">rotation_ax</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span>
+<span class="n">groups</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;manipulators&quot;</span><span class="p">]</span>
+</code></pre></div>
+<h4 id="shutters">Shutters<a class="headerlink" href="#shutters" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="k">[photon_shutter]</span>
+<span class="n">_target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nbs_bl.devices.shutters.EPS_Shutter&quot;</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Photon Shutter&quot;</span>
+<span class="n">prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;PS:&quot;</span>
+<span class="n">groups</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;shutters&quot;</span><span class="p">]</span>
+<span class="n">openval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="n">closeval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+</code></pre></div>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="device-organization">Device Organization<a class="headerlink" href="#device-organization" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Group related devices together in the configuration</li>
+<li>Use consistent naming conventions:</li>
+<li>Lowercase with underscores for device keys</li>
+<li>Descriptive human-readable names</li>
+<li>Clear, consistent PV prefixes</li>
+<li>Document special requirements or dependencies</li>
+</ol>
+<h3 id="deferred-loading">Deferred Loading<a class="headerlink" href="#deferred-loading" title="Permanent link">&para;</a></h3>
+<p>Use <code>_defer_loading = true</code> for devices that:
+- Are not always available
+- Have long initialization times
+- Are only needed for specific operations
+- May conflict with other devices</p>
+<h3 id="device-groups">Device Groups<a class="headerlink" href="#device-groups" title="Permanent link">&para;</a></h3>
+<p>Standard group names include:
+- <code>motors</code>: All motor devices
+- <code>detectors</code>: All detector devices
+- <code>shutters</code>: Beam and safety shutters
+- <code>gauges</code>: Vacuum gauges
+- <code>manipulators</code>: Sample manipulation devices
+- <code>mirrors</code>: Beamline optics
+- <code>slits</code>: Beam-defining slits</p>
+<h3 id="device-roles">Device Roles<a class="headerlink" href="#device-roles" title="Permanent link">&para;</a></h3>
+<p>Common roles include:
+- <code>beam_current</code>: Storage ring current measurement
+- <code>beam_status</code>: Beam availability status
+- <code>default_shutter</code>: Primary photon shutter
+- <code>energy</code>: Monochromator or energy setting device
+- <code>intensity_detector</code>: Primary intensity measurement
+- <code>primary_sampleholder</code>: Main sample manipulation stage
+- <code>reference_sampleholder</code>: Reference sample stage
+- <code>slits</code>: Primary beam-defining slits</p>
+<h3 id="redis-configuration">Redis Configuration<a class="headerlink" href="#redis-configuration" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Use separate configurations for metadata and info</li>
+<li>Choose meaningful prefixes to avoid conflicts</li>
+<li>Document required Redis setup and connectivity</li>
+</ol>
+<h2 id="configuration-validation">Configuration Validation<a class="headerlink" href="#configuration-validation" title="Permanent link">&para;</a></h2>
+<p>Before deploying a new configuration:
+1. Verify all required fields are present
+2. Check PV connectivity
+3. Test device initialization
+4. Validate group and role assignments
+5. Ensure Redis connectivity
+6. Test deferred loading behavior</p>
+<h2 id="common-issues-and-solutions">Common Issues and Solutions<a class="headerlink" href="#common-issues-and-solutions" title="Permanent link">&para;</a></h2>
+<h3 id="device-loading-failures">Device Loading Failures<a class="headerlink" href="#device-loading-failures" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Verify PV prefix is correct</li>
+<li>Check EPICS IOC is running</li>
+<li>Ensure network connectivity</li>
+<li>Verify required dependencies are installed</li>
+</ul>
+<h3 id="redis-connectivity">Redis Connectivity<a class="headerlink" href="#redis-connectivity" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Check Redis server is running</li>
+<li>Verify port and host settings</li>
+<li>Ensure network allows Redis connections</li>
+<li>Check database permissions</li>
+</ul>
+<h3 id="group-and-role-conflicts">Group and Role Conflicts<a class="headerlink" href="#group-and-role-conflicts" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Verify no duplicate role assignments</li>
+<li>Check group membership logic</li>
+<li>Validate device compatibility</li>
+<li>Test interaction between grouped devices
+``` </li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "toc.follow"], "search": "../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.60a45f97.min.js"></script>
+      
+    
+  </body>
+</html>
