@@ -425,10 +425,11 @@ class BeamlineModel:
         RuntimeError
             If the device cannot be deferred
         """
-        if device_name not in self.devices:
-            raise KeyError(f"Device {device_name} is not loaded")
+
         if device_name in self._deferred_devices:
-            raise KeyError(f"Device {device_name} is already deferred")
+            print(
+                f"Device {device_name} is already deferred, continuing to check aliased devices"
+            )
 
         # Get device's configuration
         device_config = self.config["devices"].get(device_name)
@@ -447,6 +448,8 @@ class BeamlineModel:
 
         # Remove from groups
         for newly_deferred in deferred_devices:
+            if newly_deferred not in self.devices:
+                continue
             for group in self.groups:
                 group_obj = getattr(self, group)
                 if newly_deferred in group_obj.devices:
