@@ -26,6 +26,7 @@ def load_RE_commands(engine):
 def setup_run_engine(RE):
     load_RE_commands(RE)
     RE.preprocessors.append(GLOBAL_BEAMLINE.supplemental_data)
+    return RE
 
 
 def create_run_engine(setup=True):

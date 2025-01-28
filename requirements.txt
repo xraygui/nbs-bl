@@ -1,7 +1,9 @@
 bluesky
+bluesky-queueserver
 databroker
 ophyd
 numpy
 ipython
-toml
+redis_json_dict
+numpydoc
 nbs-core

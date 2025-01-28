@@ -192,14 +192,17 @@ def _nbs_add_sample_md(func):
         Sample information is automatically added to the run md
         """
         md = md or {}
-        _md = {
-            "sample_name": GLOBAL_BEAMLINE.current_sample.get("name", ""),
-            "sample_id": GLOBAL_BEAMLINE.current_sample.get("sample_id", ""),
-            "sample_desc": GLOBAL_BEAMLINE.current_sample.get("description", ""),
-            "sample_set": GLOBAL_BEAMLINE.current_sample.get("group", ""),
-        }
-        _md.update(md)
-        return (yield from func(*args, md=_md, **kwargs))
+        if hasattr(GLOBAL_BEAMLINE, "current_sample"):
+            _md = {
+                "sample_name": GLOBAL_BEAMLINE.current_sample.get("name", ""),
+                "sample_id": GLOBAL_BEAMLINE.current_sample.get("sample_id", ""),
+                "sample_desc": GLOBAL_BEAMLINE.current_sample.get("description", ""),
+                "sample_set": GLOBAL_BEAMLINE.current_sample.get("group", ""),
+            }
+            _md.update(md)
+            return (yield from func(*args, md=_md, **kwargs))
+        else:
+            return (yield from func(*args, md=md, **kwargs))
 
     return _inner
 

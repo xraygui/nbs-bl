@@ -28,6 +28,7 @@ Documentation
    :caption: Contents:
 
    overview
+   getting_started
    configuration_reference
    api/index
 
