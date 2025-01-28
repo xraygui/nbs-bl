@@ -49,8 +49,9 @@ This guide will help you set up a minimal working environment for nbs-bl using s
    Create `~/.ipython/profile_nbs/startup/beamline.toml`:
    ```toml
    [configuration]
-   has_slits = true
-   has_motorized_samples = true
+   has_slits = false
+   has_motorized_samples = false
+   has_motorized_eref = false
 
    [detector_sets.default]
    primary = "main_detector"
@@ -75,14 +76,9 @@ This guide will help you set up a minimal working environment for nbs-bl using s
    _group = "motors"
 
    [main_detector]
-   _target = "ophyd.sim.SynGauss"
+   _target = "ophyd.sim.SynSignal"
    name = "Main Detector"
    _group = "detectors"
-   motor = "sample_x"
-   motor_field = "sample_x"
-   center = 0.0
-   Imax = 1.0
-   sigma = 1.0
 
    [i0]
    _target = "ophyd.sim.SynSignal"
