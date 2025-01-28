@@ -10,8 +10,8 @@ The beamline configuration system uses TOML files to define the hardware, settin
 ### Configuration Section
 ```toml
 [configuration]
-# List of devices to include in baseline readings
-baseline = ["motor1", "detector1"]
+# List of groups that should be automatically added to baseline readings
+baseline = ["motors", "vacuum", "shutters"]
 
 # Core beamline capabilities
 has_slits = true          # Whether beamline has slit devices
@@ -76,11 +76,13 @@ prefix = "PV:PREFIX:"                   # EPICS PV prefix
 # Optional fields
 _defer_loading = false                  # Whether to defer device loading
 _add_to_ns = true                       # Add to IPython namespace
+_load_order = 1                         # Load order, if device must be loaded after others
+_baseline = true                        # Override for group baseline setting
 description = "Device description"      # Human-readable description
 
 # Group membership
-groups = ["motors", "detectors"]        # Device groups
-roles = ["primary_detector"]            # Device roles
+_group = "group_name"                   # Device groups
+_role = "role_name"                     # Device roles
 
 # Device-specific parameters
 param1 = value1
@@ -93,21 +95,19 @@ param2 = value2
 ```toml
 [sample_x]
 _target = "nbs_bl.devices.motors.DeadbandEpicsMotor"
+_group = "motors"
 name = "Sample X"
 prefix = "MOTOR:X:"
-groups = ["motors", "sample_motors"]
 tolerance = 0.1
-baseline = true
 ```
 
 #### Detectors
 ```toml
 [main_detector]
 _target = "nbs_bl.devices.detectors.ophScalar"
+_group = "detectors"
 name = "Main Detector"
 prefix = "DET:MAIN:"
-groups = ["detectors"]
-roles = ["primary"]
 description = "Main measurement detector"
 rescale = 1.0
 ```
@@ -118,10 +118,8 @@ rescale = 1.0
 _target = "nbs_bl.devices.sampleholders.Manipulator4AxBase"
 name = "Sample Manipulator"
 prefix = "MANIP:"
-attachment_point = [0, 0, 0]
-beam_direction = [0, -1, 0]
-rotation_ax = 2
-groups = ["manipulators"]
+_group = "manipulators"
+_role = "primary_sampleholder"
 ```
 
 #### Shutters
@@ -130,7 +128,7 @@ groups = ["manipulators"]
 _target = "nbs_bl.devices.shutters.EPS_Shutter"
 name = "Photon Shutter"
 prefix = "PS:"
-groups = ["shutters"]
+_group = "shutters"
 openval = 1
 closeval = 0
 ```
@@ -151,6 +149,9 @@ Use `_defer_loading = true` for devices that:
 - Have long initialization times
 - Are only needed for specific operations
 - May conflict with other devices
+
+Use `_load_order` to control devices which:
+- have dependencies on other devices
 
 ### Device Groups
 Standard group names include:
