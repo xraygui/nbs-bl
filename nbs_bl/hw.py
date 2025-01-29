@@ -111,6 +111,13 @@ class DetectorGroup(HardwareGroup):
         if threshold is not None:
             self.thresholds[key] = threshold
 
+    def remove(self, device_or_key):
+        self.deactivate(device_or_key)
+        key = self.get_key(device_or_key)
+        super().remove(device_or_key)
+        self.status.pop(key, None)
+        self.thresholds.pop(key, None)
+
     def activate(self, device_or_key, role=None):
         key = self.get_key(device_or_key)
         detector = self.devices[key]

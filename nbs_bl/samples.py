@@ -46,7 +46,12 @@ def add_sample_absolute(name, sample_id, coordinates, description=None, **kwargs
     sample_id = str(sample_id)
 
     GLOBAL_BEAMLINE.primary_sampleholder.add_sample(
-        name, sample_id, coordinates, description="", origin="absolute", **kwargs
+        name,
+        sample_id,
+        coordinates,
+        description=description,
+        origin="absolute",
+        **kwargs,
     )
 
 
@@ -55,7 +60,7 @@ def add_current_position_as_sample(name, sample_id, description=None, **kwargs):
     sample_id = str(sample_id)
 
     GLOBAL_BEAMLINE.primary_sampleholder.add_current_position_as_sample(
-        name, sample_id, description="", **kwargs
+        name, sample_id, description=description, **kwargs
     )
 
 

@@ -2,7 +2,7 @@ from bluesky.preprocessors import SupplementalData
 from .queueserver import GLOBAL_USER_STATUS
 from .status import StatusDict
 from .hw import HardwareGroup, DetectorGroup, loadFromConfig
-from nbs_core.autoload import instantiateOphyd, _find_deferred_devices
+from nbs_core.autoload import instantiateOphyd, _find_deferred_devices, getMaxLoadPass
 from os.path import join, exists
 import IPython
 
@@ -262,9 +262,12 @@ class BeamlineModel:
             self.samples = holder.samples
             self.current_sample = holder.current_sample
 
-        holder.reload_sample_frames()
+        try:
+            holder.reload_sample_frames()
+        except Exception as e:
+            print(f"Error reloading sample frames for primary sampleholder: {e}")
 
-    def load_devices(self, config, ns=None):
+    def load_devices(self, config, ns=None, load_pass=None):
         """
         Load and register devices from configuration.
 
@@ -275,12 +278,16 @@ class BeamlineModel:
         ns : dict, optional
             Namespace for loading devices
         """
+        if load_pass is None:
+            max_load_pass = getMaxLoadPass(config)
+            for pass_num in range(1, max_load_pass + 1):
+                self.load_devices(config, ns, load_pass=pass_num)
         # Find deferred devices for tracking
         _, _, deferred_config = _find_deferred_devices(config)
 
         # Load non-deferred devices
         devices, groups, roles = loadFromConfig(
-            config, instantiateOphyd, alias=True, namespace=ns, load_pass="auto"
+            config, instantiateOphyd, alias=True, namespace=ns, load_pass=load_pass
         )
 
         # Update deferred device tracking
@@ -423,12 +430,11 @@ class BeamlineModel:
             If the device cannot be deferred
         """
         ip = IPython.get_ipython()
-        if device_name not in self.devices:
-            print(f"Device {device_name} is not loaded")
-            return
+        
         if device_name in self._deferred_devices:
-            print(f"Device {device_name} is already deferred")
-            return
+            print(
+                f"Device {device_name} is already deferred, continuing to check aliased devices"
+            )
 
         # Get device's configuration
         device_config = self.config["devices"].get(device_name)
@@ -447,6 +453,8 @@ class BeamlineModel:
 
         # Remove from groups
         for newly_deferred in deferred_devices:
+            if newly_deferred not in self.devices:
+                continue
             for group in self.groups:
                 group_obj = getattr(self, group)
                 if newly_deferred in group_obj.devices:

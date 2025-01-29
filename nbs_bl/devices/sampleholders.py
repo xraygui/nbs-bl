@@ -158,8 +158,7 @@ class SampleHolderBase(Device):
                 continue
 
             if sample["origin"] == "absolute":
-                self.sample_frames[sample_id] = {}
-                self.sample_frames[sample_id].update(sample["position"])
+                self.sample_frames[sample_id] = sample["position"]
             else:
                 self.sample_frames[sample_id] = self.holder.make_sample_frame(
                     sample["position"]
