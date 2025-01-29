@@ -4,6 +4,7 @@ from .status import StatusDict
 from .hw import HardwareGroup, DetectorGroup, loadFromConfig
 from nbs_core.autoload import instantiateOphyd, _find_deferred_devices
 from os.path import join, exists
+import IPython
 
 try:
     import tomllib
@@ -421,10 +422,13 @@ class BeamlineModel:
         RuntimeError
             If the device cannot be deferred
         """
+        ip = IPython.get_ipython()
         if device_name not in self.devices:
-            raise KeyError(f"Device {device_name} is not loaded")
+            print(f"Device {device_name} is not loaded")
+            return
         if device_name in self._deferred_devices:
-            raise KeyError(f"Device {device_name} is already deferred")
+            print(f"Device {device_name} is already deferred")
+            return
 
         # Get device's configuration
         device_config = self.config["devices"].get(device_name)
@@ -452,18 +456,20 @@ class BeamlineModel:
             for role in self.roles:
                 if (
                     hasattr(self, role)
-                    and getattr(self, role) == self.devices[newly_deferred]
+                    and getattr(self, role) == self.devices.get(newly_deferred, None)
                 ):
                     setattr(self, role, None)
 
             # Remove from baseline if present
-            device = self.devices[newly_deferred]
-            if device in self.supplemental_data.baseline:
+            device = self.devices.get(newly_deferred, None)
+            if device != None and device in self.supplemental_data.baseline:
                 self.supplemental_data.baseline.remove(device)
 
             # Remove from devices registry
-            self.devices.pop(newly_deferred)
-
+            if device != None:
+                self.devices.pop(newly_deferred)
+                del device
+            ip.user_global_ns.pop(newly_deferred, None)
         return device_name
 
     def __getitem__(self, key):
