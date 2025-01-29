@@ -261,7 +261,10 @@ class BeamlineModel:
             self.samples = holder.samples
             self.current_sample = holder.current_sample
 
-        holder.reload_sample_frames()
+        try:
+            holder.reload_sample_frames()
+        except Exception as e:
+            print(f"Error reloading sample frames for primary sampleholder: {e}")
 
     def load_devices(self, config, ns=None, load_pass=None):
         """
