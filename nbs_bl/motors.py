@@ -7,7 +7,7 @@ from .help import add_to_func_list
 def list_motors(verbose=False):
     """List the most important motors and their current positions"""
 
-    def textFunction(key, device):
+    def textFunction(motors, key, device):
         name = device.name
         try:
             position = device.position

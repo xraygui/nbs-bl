@@ -5,16 +5,141 @@ from bluesky.plan_stubs import mv, mvr, trigger_and_read
 from bluesky.plans import count
 import numpy as np
 
+from nbs_bl.plans.flyscan_base import fly_scan
+from bluesky.preprocessors import finalize_wrapper
+import bluesky.plan_stubs as bps
+from nbs_bl.hw import Shutter_control, Shutter_enable
+from .scan_decorators import wrap_plan_name
 
-def find_max(plan, dets, *args, max_channel=None, invert=False, **kwargs):
+
+@wrap_plan_name
+def fly_max(
+    detectors,
+    motor,
+    *args,
+    max_channel=None,
+    invert=False,
+    end_on_max=True,
+    md=None,
+    **kwargs,
+):
+    r"""
+    plan: tune a motor to the maximum of signal(motor)
+
+    Initially, traverse the range from start to stop with
+    the number of points specified.  Repeat with progressively
+    smaller step size until the minimum step size is reached.
+    Rescans will be centered on the signal maximum
+    with original scan range reduced by ``step_factor``.
+
+    Set ``snake=True`` if your positions are reproducible
+    moving from either direction.  This will not
+    decrease the number of traversals required to reach convergence.
+    Snake motion reduces the total time spent on motion
+    to reset the positioner.  For some positioners, such as
+    those with hysteresis, snake scanning may not be appropriate.
+    For such positioners, always approach the positions from the
+    same direction.
+
+    Note:  if there are multiple maxima, this function may find a smaller one
+    unless the initial number of steps is large enough.
+
+    Parameters
+    ----------
+    detectors : Signal
+        list of 'readable' objects
+    motor : object
+        any 'settable' object (motor, temp controller, etc.)
+    start : float
+        start of range
+    stop : float
+        end of range, note: start < stop
+    velocities : list of floats
+        list of speeds to set motor to during run.
+    max_channel : list of strings
+        detector fields whose output is to maximize. If not given, the first detector is used.
+        (the first will be maximized, but secondardy maxes will be recorded during the scans for the first -
+        if the maxima are not in the same range this will not be useful)
+    md : dict, optional
+        metadata
+    **kwargs : dict, optional
+        additional arguments to pass to fly_scan
+
+    """
+    if max_channel is None:
+        max_channel = [detectors[0].name]
+    _md = {
+        "maximizer_args": {
+            "plan": "fly_scan",
+            "max_channel": max_channel,
+            "end_on_max": end_on_max,
+            "invert": invert,
+        },
+        "hints": {},
+    }
+    _md.update(md or {})
+
+    dc = DocumentCache()
+
+    @bpp.subs_decorator(dc)
+    def inner_maximizer():
+        yield from fly_scan(detectors, motor, *args, md=_md, **kwargs)
+        run = BlueskyRun(dc)
+        table = run.primary.read()
+        motor_name = motor.name
+        max_info = {}
+        move_list = []
+
+        for detname in max_channel:
+            if invert:
+                idx = int(table[detname].argmin())
+                print(f"Minimum found at step {idx} for detector {detname}")
+            else:
+                idx = int(table[detname].argmax())
+                print(f"Maximum found at step {idx} for detector {detname}")
+            max_info[detname] = {"idx": idx, "value": table[detname][idx]}
+            max_val = float(table[motor_name][idx])
+            max_info[detname][motor_name] = max_val
+            move_list.extend([motor, max_val])
+        if end_on_max:
+            print("going to found motor positions")
+            yield from mv(*move_list)
+        return max_info
+
+    return (yield from inner_maximizer())
+
+
+@wrap_plan_name
+def find_max(
+    plan,
+    dets,
+    *args,
+    max_channel=None,
+    invert=False,
+    end_on_max=True,
+    md=None,
+    **kwargs,
+):
     """
     invert turns find_max into find_min
     """
     dc = DocumentCache()
 
+    md = md or {}
+
+    _md = {
+        "maximizer_args": {
+            "plan": plan.__name__,
+            "max_channel": max_channel,
+            "invert": invert,
+            "end_on_max": end_on_max,
+        },
+    }
+    _md.update(md)
+
     @bpp.subs_decorator(dc)
     def inner_maximizer():
-        yield from plan(dets, *args, **kwargs)
+        yield from plan(dets, *args, md=_md, **kwargs)
         run = BlueskyRun(dc)
         table = run.primary.read()
         motor_names = run.metadata["start"]["motors"]
@@ -34,7 +159,10 @@ def find_max(plan, dets, *args, max_channel=None, invert=False, **kwargs):
             max_val = float(table[m.name][max_idx])
             print(f"setting {m.name} to {max_val}")
             ret.append([m, max_val])
-            yield from mv(m, max_val)
+        if end_on_max:
+            print("going to found motor positions")
+            flat_list = [item for sublist in ret for item in sublist]
+            yield from mv(*flat_list)
         return ret
 
     return (yield from inner_maximizer())

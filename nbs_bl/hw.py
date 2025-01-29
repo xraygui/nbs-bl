@@ -53,12 +53,35 @@ class HardwareGroup:
 
     def add(self, key, device, description="", **kwargs):
         self.devices[key] = device
-        self.descriptions[key] = description
+        has_subdevices = False
+        if hasattr(device, "real_positioners"):
+            try:
+                for k2 in device.real_positioners._fields:
+                    self.descriptions[f"{key}.{k2}"] = getattr(
+                        device.real_positioners, k2
+                    ).name
+                    has_subdevices = True
+            except Exception as e:
+                print(f"Error getting real positioners for {key}: {e}")
+        if hasattr(device, "pseudo_positioners"):
+            try:
+                for k2 in device.pseudo_positioners._fields:
+                    self.descriptions[f"{key}.{k2}"] = getattr(
+                        device.pseudo_positioners, k2
+                    ).name
+                    has_subdevices = True
+            except Exception as e:
+                print(f"Error getting pseudo positioners for {key}: {e}")
+        if not has_subdevices:
+            self.descriptions[key] = description
 
     def remove(self, device_or_key):
         key = self.get_key(device_or_key)
-        self.devices.pop(key)
-        self.descriptions.pop(key)
+        self.devices.pop(key, None)
+        self.descriptions.pop(key, None)
+        for dkey in list(self.descriptions.keys()):
+            if dkey.split(".")[0] == key:
+                self.descriptions.pop(dkey, None)
 
     def describe(self, verbose=True, textFunction=None):
         title = self.groupname
