@@ -155,15 +155,16 @@ def _nbs_setup_detectors(func):
         dwell : float, optional
             The exposure time in seconds for all detectors, by default None.
         """
-        for det in extra_dets:
-            activate_detector(det)
 
-        yield from set_exposure(dwell)
+        # for det in extra_dets:
+        #    activate_detector(det)
 
-        ret = yield from func(GLOBAL_BEAMLINE.detectors.active, *args, **kwargs)
+        yield from set_exposure(dwell, extra_dets=extra_dets)
+        all_dets = GLOBAL_BEAMLINE.detectors.active + extra_dets
+        ret = yield from func(all_dets, *args, **kwargs)
 
-        for det in extra_dets:
-            deactivate_detector(det)
+        # for det in extra_dets:
+        #    deactivate_detector(det)
 
         return ret
 

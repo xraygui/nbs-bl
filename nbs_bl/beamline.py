@@ -400,7 +400,7 @@ class BeamlineModel:
             device = self.devices[key]
             group.add(key, device, **device_config)
             should_add_to_baseline = all_device_config.get(key, {}).get(
-                "baseline", group_baseline
+                "_baseline", group_baseline
             )
             if should_add_to_baseline:
                 self.add_to_baseline(key, False)
@@ -430,7 +430,7 @@ class BeamlineModel:
             If the device cannot be deferred
         """
         ip = IPython.get_ipython()
-        
+
         if device_name in self._deferred_devices:
             print(
                 f"Device {device_name} is already deferred, continuing to check aliased devices"
@@ -462,9 +462,8 @@ class BeamlineModel:
 
             # Remove from roles
             for role in self.roles:
-                if (
-                    hasattr(self, role)
-                    and getattr(self, role) == self.devices.get(newly_deferred, None)
+                if hasattr(self, role) and getattr(self, role) == self.devices.get(
+                    newly_deferred, None
                 ):
                     setattr(self, role, None)
 

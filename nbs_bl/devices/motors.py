@@ -132,6 +132,11 @@ class DeadbandMixin(Device, PositionerBase):
     tolerance = Cpt(Signal, value=-1, kind="config")
     move_latch = Cpt(Signal, value=0, kind="omitted")
 
+    def __init__(self, *args, tolerance=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if tolerance is not None:
+            self.tolerance.put(tolerance)
+
     def _done_moving(self, success=True, timestamp=None, value=None, **kwargs):
         """Call when motion has completed.  Runs ``SUB_DONE`` subscription."""
         if self.move_latch.get():

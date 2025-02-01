@@ -34,7 +34,9 @@ def set_exposure(time: Optional[float] = None, extra_dets=[]):
     global GLOBAL_EXPOSURE_TIME
     if time is not None:
         GLOBAL_EXPOSURE_TIME = time
-    for d in GLOBAL_BEAMLINE.detectors.active:
+
+    all_dets = GLOBAL_BEAMLINE.detectors.active + extra_dets
+    for d in all_dets:
         try:
             if hasattr(d, "set_exposure"):
                 yield from call_obj(d, "set_exposure", GLOBAL_EXPOSURE_TIME)
