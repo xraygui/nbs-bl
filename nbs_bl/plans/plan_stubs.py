@@ -2,7 +2,7 @@ from ..beamline import GLOBAL_BEAMLINE
 from ..help import add_to_plan_list
 import warnings
 from bluesky import Msg
-from bluesky.plan_stubs import rd, sleep
+from bluesky.plan_stubs import rd, sleep, mv
 import time
 from typing import Optional
 
@@ -14,11 +14,24 @@ def call_obj(obj, method, *args, **kwargs):
     return ret
 
 
+def sampleholder_move_sample_old(sampleholder, sample_id=None, **position):
+    """
+    Set and move a sample. Dangerous! Sample moves really need to go through Bluesky's mv plan,
+    or else they won't be properly pause-able
+    """
+    yield from call_obj(sampleholder, "move_sample", sample_id, **position)
+
+
 def sampleholder_move_sample(sampleholder, sample_id=None, **position):
     """
     Set and move a sample.
     """
-    yield from call_obj(sampleholder, "move_sample", sample_id, **position)
+    positions = yield from call_obj(
+        sampleholder, "get_sample_position", sample_id, **position
+    )
+    print(f"Moving {sampleholder.name} to {positions}")
+    yield from mv(sampleholder, positions)
+    print("Done Moving ", sampleholder.name)
 
 
 def sampleholder_set_sample(sampleholder, sample_id):

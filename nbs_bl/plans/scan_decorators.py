@@ -275,6 +275,7 @@ def nbs_builtin_scan_wrapper(func):
     @nbs_base_scan_decorator
     @merge_func(func)
     def _inner(*args, **kwargs):
+        print("Running ", func.__name__)
         return (yield from func(*args, **kwargs))
 
     # _inner = wrap_metadata({"plan_name": plan_name})(nbs_base_scan_decorator(func))

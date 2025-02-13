@@ -10,7 +10,7 @@ from bluesky.preprocessors import plan_mutator
 from typing import Optional
 
 
-def flystream_during_wrapper(plan, flyers, stream=False):
+def flystream_during_wrapper(plan, flyers):
     """
     Kickoff and collect "flyer" (asynchronously collect) objects during runs.
     This is a preprocessor that insert messages immediately after a run is
@@ -34,7 +34,7 @@ def flystream_during_wrapper(plan, flyers, stream=False):
     grp2 = _short_uid("flyers-complete")
     kickoff_msgs = [Msg("kickoff", flyer, group=grp1) for flyer in flyers]
     complete_msgs = [Msg("complete", flyer, group=grp2) for flyer in flyers]
-    collect_msgs = [Msg("collect", flyer, stream=stream) for flyer in flyers]
+    collect_msgs = [Msg("collect", flyer) for flyer in flyers]
     if flyers:
         # If there are any flyers, insert a 'wait' Msg after kickoff, complete
         kickoff_msgs += [Msg("wait", None, group=grp1)]
@@ -75,27 +75,55 @@ def fly_scan(
     stop,
     *args,
     md: Optional[dict] = None,
-    period: Optional[float] = None
+    period: Optional[float] = None,
+    stream: bool = True,
 ):
     """
-    Flyscan one motor in a trajectory
+    Perform a fly scan over the specified motor range.
 
     Parameters
     ----------
     detectors : list
-        list of 'readable' or 'flyable' devices
-    motor :
-        a flyable motor
-    *args :
-        For a single trajectory, ``start, stop[, speed]``
-        where speed is optional
-        In general:
-        .. code-block:: python
-
-            start1, stop1, speed1[, start2, stop2, speed2, ...]
-
+        List of detectors to use for the scan
+    motor : ophyd.Device
+        Motor to be scanned
+    start : float
+        Starting position of the scan
+    stop : float
+        Ending position of the scan
+    *args : float, optional
+        Additional scan parameters in groups of 3: start, stop, speed.
+        For example:
+        start1, stop1, speed1[, start2, stop2, speed2, ...]
+        This allows for multiple trajectory segments in a single scan
     md : dict, optional
-        metadata
+        Metadata dictionary to be included with the scan
+    period : float, optional
+        Time period between data points. If None, uses detector's default period
+    stream : bool, optional
+        If True, continuously stream data from detectors during the scan.
+        If False, collect data only at specified points. Default is True
+
+    Returns
+    -------
+    uid : str
+        Unique identifier for the scan
+
+    Notes
+    -----
+    When stream=True, detectors will continuously collect data during motor movement,
+    providing higher time resolution but potentially more data volume.
+    When stream=False, data is collected only at specific points, reducing data volume
+    but potentially missing intermediate states.
+
+    Examples
+    --------
+    # Simple scan with one trajectory, default motor speed
+    >>> fly_scan([det], motor, 0, 10)
+
+    # Multi-segment scan with different speeds
+    >>> fly_scan([det], motor, 0, 10, 2, 10, 20, 5)
+    # This will scan from 0->10 at speed 2, then 10->20 at speed 5
     """
 
     md = md or {}
@@ -145,4 +173,7 @@ def fly_scan(
 
         yield from call_obj(motor, "land")
 
-    return (yield from flystream_during_wrapper(inner_flyscan(), flyers))
+    if stream:
+        return (yield from flystream_during_wrapper(inner_flyscan(), flyers))
+    else:
+        return (yield from inner_flyscan())

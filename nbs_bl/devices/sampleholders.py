@@ -164,6 +164,13 @@ class SampleHolderBase(Device):
                     sample["position"]
                 )
 
+    def move_sample(self, sample_id, **positions):
+        position = self.get_sample_position(sample_id, **positions)
+        return self.move(position)
+
+    def get_sample_position(self, sample_id, **positions):
+        raise NotImplementedError("This method should be implemented by the subclass")
+
 
 class Manipulator1AxBase(PseudoPositioner, SampleHolderBase):
     sx = Cpt(PseudoSingle)
@@ -204,10 +211,10 @@ class Manipulator1AxBase(PseudoPositioner, SampleHolderBase):
             position = rp.sx - frame_coords[0]
         return self.PseudoPosition(position)
 
-    def move_sample(self, sample_id, position=0, **kwargs):
+    def get_sample_position(self, sample_id=None, position=0):
         if sample_id is not None:
             self.set_sample(sample_id)
-        return self.move(position)
+        return position
 
 
 class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
@@ -304,13 +311,13 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
             name, id, {"coordinates": coordinates}, description, origin=origin, **kwargs
         )
 
-    def move_sample(self, sample_id, **positions):
+    def get_sample_position(self, sample_id=None, **positions):
         if sample_id is not None:
             self.set_sample(sample_id)
-        if isinstance(self.current_frame, dict):
-            position = [0, 0, 0, 0]
-        else:
+        if isinstance(self.current_frame, Frame):
             position = [p for p in self.default_coords]
+        else:
+            position = [0, 0, 0, 0]
         if "x" in positions:
             position[0] = positions["x"]
         if "y" in positions:
@@ -319,7 +326,7 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
             position[2] = positions["z"]
         if "r" in positions:
             position[3] = positions["r"]
-        return self.move(position)
+        return position
 
     def sample_rotation_to_manip_rotation(self, r):
         # Assumes that z-axis is the surface normal!!

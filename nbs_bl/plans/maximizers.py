@@ -10,6 +10,88 @@ from bluesky.preprocessors import finalize_wrapper
 import bluesky.plan_stubs as bps
 from nbs_bl.hw import Shutter_control, Shutter_enable
 from .scan_decorators import wrap_plan_name
+import pandas as pd
+from typing import List
+
+
+def process_fly_scan(run, signal_names=None, time_offsets=None):
+    if time_offsets is None:
+        time_offsets = {}
+
+    df = pd.DataFrame()
+    for stream_name in run:
+        if "monitor" not in stream_name:
+            print(stream_name)
+            continue
+        column_name = stream_name.replace("_monitor", "")
+        newdf = pd.DataFrame(
+            {
+                "time": run[stream_name].read()["time"].to_numpy(),
+                column_name: run[stream_name].read()[column_name].to_numpy(),
+            }
+        ).set_index("time")
+        newdf.index += time_offsets.get(stream_name, 0.0)
+        df = pd.concat((df, newdf))
+    non_monitor_signals = [
+        signal for signal in signal_names if signal not in df.columns
+    ]
+    print("Non-monitor signals: ", non_monitor_signals)
+    primary = run.primary.read()
+    for signal_name in non_monitor_signals:
+        if signal_name in primary:
+            newdf = pd.DataFrame(
+                {
+                    "time": primary["time"].to_numpy(),
+                    signal_name: primary[signal_name].to_numpy(),
+                }
+            ).set_index("time")
+            newdf.index += time_offsets.get(signal_name, 0.0)
+            df = pd.concat((df, newdf))
+    # df = df[~df.index.duplicated(keep='first')].sort_index().interpolate(method='index').ffill().bfill()
+
+    df = (
+        df.groupby("time")
+        .mean()
+        .sort_index()
+        .interpolate(method="index")
+        .ffill()
+        .bfill()
+    )
+
+    return df
+
+
+def find_optimum_motor_pos(
+    run,
+    motor_name: str,
+    signal_names: List[str],
+    time_offsets=None,
+    invert=False,
+):
+    """
+    df = process_fly_scan(run, [motor_name] + signal_names, time_offsets)
+    max_signal_dict = {}
+    for signal_name in signal_names:
+        idx = df[signal_name].idxmax() if not invert else df[signal_name].idxmin()
+        max_signal_dict[signal_name] = {}
+        max_signal_dict[signal_name]["time"] = idx
+        max_signal_dict[signal_name][motor_name] = df[motor_name][idx]
+        max_signal_dict[signal_name]["value"] = df[signal_name][idx]
+    return max_signal_dict
+    """
+    table = run.primary.read()
+    max_info = {}
+    for detname in signal_names:
+        if invert:
+            idx = int(table[detname].argmin())
+            print(f"Minimum found at step {idx} for detector {detname}")
+        else:
+            idx = int(table[detname].argmax())
+            print(f"Maximum found at step {idx} for detector {detname}")
+        max_info[detname] = {"idx": idx, "value": table[detname][idx]}
+        max_val = float(table[motor_name][idx])
+        max_info[detname][motor_name] = max_val
+    return max_info
 
 
 @wrap_plan_name
@@ -21,6 +103,8 @@ def fly_max(
     invert=False,
     end_on_max=True,
     md=None,
+    period: float = 1,
+    time_offsets: dict = None,
     **kwargs,
 ):
     r"""
@@ -62,6 +146,8 @@ def fly_max(
         if the maxima are not in the same range this will not be useful)
     md : dict, optional
         metadata
+    period: float, optional
+        Detector integration time in seconds.
     **kwargs : dict, optional
         additional arguments to pass to fly_scan
 
@@ -83,27 +169,15 @@ def fly_max(
 
     @bpp.subs_decorator(dc)
     def inner_maximizer():
-        yield from fly_scan(detectors, motor, *args, md=_md, **kwargs)
+        yield from fly_scan(detectors, motor, *args, md=_md, period=period, **kwargs)
         run = BlueskyRun(dc)
-        table = run.primary.read()
         motor_name = motor.name
         max_info = {}
-        move_list = []
-
-        for detname in max_channel:
-            if invert:
-                idx = int(table[detname].argmin())
-                print(f"Minimum found at step {idx} for detector {detname}")
-            else:
-                idx = int(table[detname].argmax())
-                print(f"Maximum found at step {idx} for detector {detname}")
-            max_info[detname] = {"idx": idx, "value": table[detname][idx]}
-            max_val = float(table[motor_name][idx])
-            max_info[detname][motor_name] = max_val
-            move_list.extend([motor, max_val])
+        max_info = find_optimum_motor_pos(run, motor_name, max_channel, invert=invert)
         if end_on_max:
-            print("going to found motor positions")
-            yield from mv(*move_list)
+            motor_pos = max_info[max_channel[0]]["value"]
+            print(f"going to position {motor_pos} for {motor_name}")
+            yield from mv(motor, motor_pos)
         return max_info
 
     return (yield from inner_maximizer())

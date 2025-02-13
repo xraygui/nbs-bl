@@ -53,6 +53,30 @@ class GeometryBase(ABC):
             )
 
 
+class AbsoluteBar(GeometryBase):
+    """
+    This is a geometry that assumes that the position is absolute, and will never attempt
+    to do any coordinate transformations.
+    """
+
+    def __init__(self):
+        pass
+
+    def make_sample_frame(self, position):
+        """
+        Always assume that the position is absolute, and return the coordinates
+        """
+        return position
+
+    def generate_geometry(self):
+        pass
+
+    def get_geometry(self):
+        side_md = {}
+        side_frames = {}
+        return side_md, side_frames
+
+
 class Standard4SidedBar(GeometryBase):
     def __init__(self, width, length):
         self.length = length
