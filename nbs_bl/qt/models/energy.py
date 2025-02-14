@@ -28,6 +28,7 @@ class EnergyModel:
         self.cff = PVModel(
             obj.monoen.cff.name, obj.monoen.cff, group=group, long_name=f"{name} CFF"
         )
+        self.real_motors = self.energy.real_motors
         self.group = group
         self.label = long_name
         for key, value in kwargs.items():

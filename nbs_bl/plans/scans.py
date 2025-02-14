@@ -1,4 +1,4 @@
-from .scan_decorators import nbs_builtin_scan_wrapper
+from .scan_decorators import dynamic_scan_wrapper
 from .scan_base import _make_gscan_points
 from .flyscan_base import fly_scan
 from ..help import add_to_scan_list
@@ -30,7 +30,7 @@ _scan_list = [
 ]
 
 for _scan in _scan_list:
-    _newscan = nbs_builtin_scan_wrapper(_scan)
+    _newscan = dynamic_scan_wrapper(_scan)
     _fixedname = f"nbs_{_scan.__name__}"
     _newscan.__name__ = _fixedname
     globals()[_fixedname] = _newscan

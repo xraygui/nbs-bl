@@ -13,6 +13,8 @@ from .groups import repeat
 
 # from ..settings import settings
 from typing import Optional
+from importlib.metadata import entry_points
+from functools import reduce
 
 
 def wrap_scantype(scantype):
@@ -154,12 +156,13 @@ def _nbs_setup_detectors(func):
             A list of extra detectors to be activated for the scan, by default [].
         dwell : float, optional
             The exposure time in seconds for all detectors, by default None.
+            If None, do not set any exposure time, and assume that detectors are already set
         """
 
         # for det in extra_dets:
         #    activate_detector(det)
-
-        yield from set_exposure(dwell, extra_dets=extra_dets)
+        if dwell is not None:
+            yield from set_exposure(dwell, extra_dets=extra_dets)
         all_dets = GLOBAL_BEAMLINE.detectors.active + extra_dets
         ret = yield from func(all_dets, *args, **kwargs)
 
@@ -199,6 +202,11 @@ def _nbs_add_sample_md(func):
                 "sample_id": GLOBAL_BEAMLINE.current_sample.get("sample_id", ""),
                 "sample_desc": GLOBAL_BEAMLINE.current_sample.get("description", ""),
                 "sample_set": GLOBAL_BEAMLINE.current_sample.get("group", ""),
+                "sample_info": {
+                    k: v
+                    for k, v in GLOBAL_BEAMLINE.current_sample.items()
+                    if k not in ["name", "sample_id", "description", "group"]
+                },
             }
             _md.update(md)
             return (yield from func(*args, md=_md, **kwargs))
@@ -288,3 +296,77 @@ Other detectors may be added on the fly via extra_dets
 
     _inner.__doc__ = d + _inner.__doc__
     return _inner
+
+
+def get_decorator_entrypoints():
+    """
+    Get decorator entrypoints from beamline configuration.
+
+    Returns
+    -------
+    list
+        List of decorator functions loaded from entrypoints
+    """
+    config = GLOBAL_BEAMLINE.config
+    decorator_entrypoints = config.get("settings", {}).get("plan_decorators", [])
+
+    decorators = []
+    if decorator_entrypoints:
+        eps = entry_points()
+        for ep_name in decorator_entrypoints:
+            try:
+                # Look for entrypoint in nbs_bl.plan_decorators group
+                matches = eps.select(group="nbs_bl.plan_decorators", name=ep_name)
+                for match in matches:
+                    decorator = match.load()
+                    decorators.append(decorator)
+            except Exception as e:
+                print(f"Failed to load decorator {ep_name}: {e}")
+
+    return decorators
+
+
+def dynamic_scan_wrapper(func):
+    """
+    A flexible wrapper for Bluesky scans that incorporates base NBS functionality
+    and additional decorators from entrypoints.
+
+    Parameters
+    ----------
+    func : callable
+        The scan function to wrap
+
+    Returns
+    -------
+    callable
+        Wrapped scan function with all decorators applied
+    """
+    # Get base decorators
+    base_decorators = [wrap_plan_name, nbs_base_scan_decorator, merge_func(func)]
+
+    # Get additional decorators from entrypoints
+    additional_decorators = get_decorator_entrypoints()
+
+    # Combine all decorators
+    all_decorators = additional_decorators + base_decorators
+
+    # Apply decorators in order
+    def _inner(*args, **kwargs):
+        print("Running ", func.__name__)
+        return (yield from func(*args, **kwargs))
+
+    # Apply all decorators in sequence
+    wrapped = reduce(lambda f, dec: dec(f), all_decorators, _inner)
+
+    # Add documentation
+    d = f"""Modifies {func.__name__} to automatically fill
+dets with global active beamline detectors.
+Other detectors may be added on the fly via extra_dets
+---------------------------------------------------------
+
+Additional decorators loaded:
+{[d.__name__ for d in additional_decorators]}
+"""
+    wrapped.__doc__ = d + (wrapped.__doc__ or "")
+
+    return wrapped
