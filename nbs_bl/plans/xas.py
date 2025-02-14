@@ -76,8 +76,7 @@ def _xas_factory(energy_grid, element, edge, key):
 
 @add_to_func_list
 def load_xas(filename):
-    """
-    Load XAS plans from a TOML file and inject them into the IPython user namespace.
+    """Load XAS plans from a TOML file and inject them into the IPython user namespace.
 
     Parameters
     ----------

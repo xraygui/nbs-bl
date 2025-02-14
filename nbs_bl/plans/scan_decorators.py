@@ -360,8 +360,8 @@ def dynamic_scan_wrapper(func):
     wrapped = reduce(lambda f, dec: dec(f), all_decorators, _inner)
 
     # Add documentation
-    d = f"""Modifies {func.__name__} to automatically fill
-dets with global active beamline detectors.
+    d = f"""Wraps {func.__name__} with additional arguments and default detectors.
+    
 Other detectors may be added on the fly via extra_dets
 ---------------------------------------------------------
 

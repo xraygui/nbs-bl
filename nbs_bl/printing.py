@@ -121,7 +121,7 @@ def run_report(thisfile):
     print(colored("Importing %s ..." % thisfile.split("/")[-1], "lightcyan"))
 
 
-def boxed_text(title, text, tint, width=75, shrink=False):
+def boxed_text(title, text, tint, width=82, shrink=False):
     """
     Put text in a lovely unicode block element box.
 

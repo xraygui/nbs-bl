@@ -69,7 +69,7 @@ def print_builtins(sections=None):
             for f in sorted(GLOBAL_HELP_DICTIONARY[key].keys()):
                 doc = GLOBAL_HELP_DICTIONARY[key][f].split("\n")[0]
                 textList.append(f"{f}: {doc}")
-        boxed_text(section, textList, "white")
+        boxed_text(section, textList, "white", width=100)
 
 
 @add_to_func_list
