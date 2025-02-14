@@ -161,6 +161,7 @@ def _nbs_setup_detectors(func):
 
         # for det in extra_dets:
         #    activate_detector(det)
+        print("Detector Setup Decorator")
         if dwell is not None:
             yield from set_exposure(dwell, extra_dets=extra_dets)
         all_dets = GLOBAL_BEAMLINE.detectors.active + extra_dets
@@ -342,13 +343,13 @@ def dynamic_scan_wrapper(func):
         Wrapped scan function with all decorators applied
     """
     # Get base decorators
-    base_decorators = [wrap_plan_name, nbs_base_scan_decorator, merge_func(func)]
+    base_decorators = [merge_func(func), nbs_base_scan_decorator]
 
     # Get additional decorators from entrypoints
     additional_decorators = get_decorator_entrypoints()
 
     # Combine all decorators
-    all_decorators = additional_decorators + base_decorators
+    all_decorators = base_decorators + additional_decorators + [wrap_plan_name]
 
     # Apply decorators in order
     def _inner(*args, **kwargs):
