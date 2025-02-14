@@ -361,9 +361,9 @@ def dynamic_scan_wrapper(func):
 
     # Add documentation
     d = f"""Wraps {func.__name__} with additional arguments and default detectors.
-    
+
 Other detectors may be added on the fly via extra_dets
----------------------------------------------------------
+
 
 Additional decorators loaded:
 {[d.__name__ for d in additional_decorators]}
