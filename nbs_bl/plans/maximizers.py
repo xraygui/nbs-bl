@@ -175,7 +175,7 @@ def fly_max(
         max_info = {}
         max_info = find_optimum_motor_pos(run, motor_name, max_channel, invert=invert)
         if end_on_max:
-            motor_pos = max_info[max_channel[0]]["value"]
+            motor_pos = max_info[max_channel[0]][motor_name]
             print(f"going to position {motor_pos} for {motor_name}")
             yield from mv(motor, motor_pos)
         return max_info
