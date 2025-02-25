@@ -43,7 +43,7 @@ def _wrap_xas(element, edge):
 def _xas_factory(energy_grid, element, edge, key):
     @_wrap_xas(element, edge)
     @wrap_metadata({"plan_name": key})
-    @merge_func(nbs_gscan, omit_params=["motor", "args"])
+    @merge_func(nbs_gscan, omit_params=["motor", "start", "stop", "step", "args"])
     def inner(**kwargs):
         """Parameters
         ----------
