@@ -73,8 +73,8 @@ def add_sample_absolute(name, sample_id, coordinates, description=None, **kwargs
         Name of the sample
     sample_id : str
         Unique identifier for the sample
-    coordinates : dict
-        Absolute coordinates for sample position
+    coordinates : list
+        List of coordinates for sample position
     description : str, optional
         Description of the sample
     **kwargs : dict
@@ -84,7 +84,7 @@ def add_sample_absolute(name, sample_id, coordinates, description=None, **kwargs
     GLOBAL_BEAMLINE.primary_sampleholder.add_sample(
         name,
         sample_id,
-        coordinates,
+        {"coordinates": coordinates},
         description=description,
         origin="absolute",
         **kwargs,
