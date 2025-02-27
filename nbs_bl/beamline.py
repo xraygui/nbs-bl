@@ -61,6 +61,7 @@ class BeamlineModel:
         Creates an empty BeamlineModel, need to load_devices after init
         """
         self.supplemental_data = SupplementalData()
+        self.md = {}
         self.settings = StatusDict()
         self.devices = StatusDict()
         self.energy = None
@@ -136,6 +137,7 @@ class BeamlineModel:
 
         # Handle Redis settings
         self.load_redis()
+        self.load_md()
         tmp_settings = GLOBAL_USER_STATUS.request_status_dict(
             "SETTINGS", use_redis=True
         )
@@ -358,6 +360,24 @@ class BeamlineModel:
                 db=redis_settings.get("db", 0),
                 global_prefix=redis_settings.get("prefix", ""),
             )
+
+    def load_md(self):
+        redis_md_settings = (
+            self.config.get("settings", {}).get("redis", {}).get("md", {})
+        )
+        if redis_md_settings:
+            import redis
+            from nbs_bl.status import RedisStatusDict
+
+            mdredis = redis.Redis(
+                redis_md_settings.get["host"],
+                port=redis_md_settings.get("port", 6379),
+                db=redis_md_settings.get("db", 0),
+            )
+            self.md = RedisStatusDict(
+                mdredis, prefix=redis_md_settings.get("prefix", "")
+            )
+            GLOBAL_USER_STATUS.add_status("USER_MD", self.md)
 
     def get_device(self, device_name, get_subdevice=True):
         """

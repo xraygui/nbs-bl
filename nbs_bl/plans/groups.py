@@ -7,6 +7,12 @@ from .preprocessors import wrap_metadata, merge_func
 def repeat(func):
     @merge_func(func)
     def inner(*args, repeat: int = 1, **kwargs):
+        """
+        Parameters
+        ----------
+        repeat : int, optional
+            The number of times to repeat the entire scan
+        """
         if repeat > 1:
             repeat_uid = str(uuid.uuid4())
             return_list = []
