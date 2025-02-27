@@ -370,7 +370,7 @@ class BeamlineModel:
             from nbs_bl.status import RedisStatusDict
 
             mdredis = redis.Redis(
-                redis_md_settings.get["host"],
+                redis_md_settings["host"],
                 port=redis_md_settings.get("port", 6379),
                 db=redis_md_settings.get("db", 0),
             )
