@@ -15,6 +15,7 @@ class ScalarBase(Device):
     sum = Cpt(Signal, name="sum", value=0, kind="omitted")
     rescale = Cpt(Signal, value=1, name="rescale", kind="config")
     offset = Cpt(Signal, value=0, name="offset", kind="config")
+    gain = Cpt(Signal, value=1, name="gain", kind="config")
 
     def __init__(self, *args, rescale=1, **kwargs):
         self._flying = False
@@ -25,6 +26,8 @@ class ScalarBase(Device):
         super().__init__(*args, **kwargs)
         self.mean.name = self.name
         self.rescale.set(rescale).wait(timeout=60)
+        if "gain" in kwargs:
+            self.gain.set(kwargs["gain"]).wait(timeout=60)
 
     def kickoff(self):
         self._flyer_buffer = []
