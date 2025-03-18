@@ -75,7 +75,7 @@ class HardwareGroup:
         if hasattr(device, "position_axes"):
             try:
                 for k2 in device.position_axes:
-                    self.descriptions[f"{key}.{k2.name}"] = k2.name
+                    self.descriptions[f"{key}.{k2.attr_name}"] = k2.attr_name
                     has_subdevices = True
             except Exception as e:
                 print(f"Error getting position axes for {key}: {e}")
