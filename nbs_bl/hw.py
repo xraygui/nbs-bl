@@ -72,6 +72,13 @@ class HardwareGroup:
                     has_subdevices = True
             except Exception as e:
                 print(f"Error getting pseudo positioners for {key}: {e}")
+        if hasattr(device, "position_axes"):
+            try:
+                for k2 in device.position_axes:
+                    self.descriptions[f"{key}.{k2.name}"] = k2.name
+                    has_subdevices = True
+            except Exception as e:
+                print(f"Error getting position axes for {key}: {e}")
         if not has_subdevices:
             self.descriptions[key] = description
 
