@@ -1,5 +1,6 @@
 from queue import Queue, Empty
 import time
+from datetime import datetime
 import threading
 
 from ophyd import EpicsMotor, Signal, PositionerBase, Device
@@ -102,15 +103,20 @@ class FlyerMixin:
         return completion_status
 
     def describe_collect(self):
+        if hasattr(self, "user_readback"):
+            readback = self.user_readback
+        else:
+            readback = self.readback
+            
         dd = dict(
             {
-                self.user_readback.name: {
-                    "source": self.user_readback.pvname,
+                readback.name: {
+                    "source": readback.pvname,
                     "dtype": "number",
                     "shape": [],
                 }
             }
-        )
+        )   
         return {self.name + "_monitor": dd}
 
 
@@ -140,7 +146,7 @@ class DeadbandMixin(Device, PositionerBase):
     def _done_moving(self, success=True, timestamp=None, value=None, **kwargs):
         """Call when motion has completed.  Runs ``SUB_DONE`` subscription."""
         if self.move_latch.get():
-            # print(f"{timestamp}: {self.name} marked done")
+            #print(f"{timestamp} {datetime.today().time().isoformat()} [{self.name}]: marked done")
             if success:
                 self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp, value=value)
 
@@ -163,6 +169,7 @@ class DeadbandMixin(Device, PositionerBase):
 
             def check_deadband(value, timestamp, **kwargs):
                 if abs(value - setpoint) < tolerance:
+                    #print(f"{timestamp} {datetime.today().time().isoformat()} [{self.name}]: {value} within {tolerance} of {setpoint}")
                     self._done_moving(
                         timestamp=timestamp, success=True, value=done_value
                     )

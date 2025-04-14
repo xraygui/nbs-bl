@@ -7,7 +7,9 @@ from ..detectors import (
 )
 from ..utils import merge_func
 from .plan_stubs import set_exposure, sampleholder_set_sample, sampleholder_move_sample
-from bluesky.plan_stubs import mv
+from bluesky.plan_stubs import mv, trigger_and_read, declare_stream
+from bluesky.utils import separate_devices
+from bluesky.preprocessors import stage_wrapper, plan_mutator, set_run_key_wrapper
 from .preprocessors import wrap_metadata
 from .groups import repeat
 
@@ -145,6 +147,97 @@ def _energy_setup(func):
 
     return _inner
 
+def staged_baseline_wrapper(plan, devices, name="staged_baseline"):
+    """
+    Preprocessor that records a baseline of all `devices` after `open_run`
+
+    The readings are designated for a separate event stream named 'baseline' by
+    default.
+
+    Parameters
+    ----------
+    plan : iterable or iterator
+        a generator, list, or similar containing `Msg` objects
+    devices : collection
+        collection of Devices to read
+        If None, the plan passes through unchanged.
+    name : string, optional
+        name for event stream; by default, 'baseline'
+
+    Yields
+    ------
+    msg : Msg
+        messages from plan, with 'set' messages inserted
+    """
+
+    def head():      
+        yield from declare_stream(*devices, name=name)
+        yield from trigger_and_read(devices, name=name)
+
+    def tail():
+        yield from trigger_and_read(devices, name=name)
+
+    def insert_baseline(msg):
+        if msg.command == "open_run":
+            if msg.run is not None:
+                return None, set_run_key_wrapper(head(), msg.run)
+            else:
+                return None, head()
+
+        elif msg.command == "close_run":
+            if msg.run is not None:
+                return set_run_key_wrapper(tail(), msg.run), None
+            else:
+                return tail(), None
+
+        return None, None
+
+    if not devices:
+        # no-op
+        return (yield from plan)
+    else:
+        return (yield from plan_mutator(plan, insert_baseline))
+
+
+def _nbs_setup_detectors_with_baseline(func):
+    @merge_func(func, ["detectors"])
+    def _inner(*args, extra_dets=[], dwell: Optional[float] = None, **kwargs):
+        """
+        Parameters
+        ----------
+        extra_dets : list, optional
+            A list of extra detectors to be activated for the scan, by default [].
+        dwell : float, optional
+            The exposure time in seconds for all detectors, by default None.
+            If None, do not set any exposure time, and assume that detectors are already set
+        """
+
+        # for det in extra_dets:
+        #    activate_detector(det)
+        print("Detector Setup Decorator")
+        if dwell is not None:
+            yield from set_exposure(dwell, extra_dets=extra_dets)
+            
+        all_dets = separate_devices(GLOBAL_BEAMLINE.detectors.active + extra_dets)
+        
+        if hasattr(GLOBAL_BEAMLINE, "staged_baseline"):
+            staged_baseline_devices = separate_devices(GLOBAL_BEAMLINE.staged_baseline.values())
+            devices_to_stage = [dev for dev in staged_baseline_devices if dev not in all_dets]
+        else:
+            staged_baseline_devices = []
+            devices_to_stage = []
+
+        def inner():
+            yield from func(all_dets, *args, **kwargs)
+        
+        ret = yield from stage_wrapper(staged_baseline_wrapper(inner(), staged_baseline_devices), devices_to_stage)
+
+        # for det in extra_dets:
+        #    deactivate_detector(det)
+
+        return ret
+
+    return _inner
 
 def _nbs_setup_detectors(func):
     @merge_func(func, ["detectors"])
@@ -173,7 +266,6 @@ def _nbs_setup_detectors(func):
         return ret
 
     return _inner
-
 
 def _nbs_add_plot_md(func):
     @merge_func(func)
