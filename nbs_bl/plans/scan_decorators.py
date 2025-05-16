@@ -11,6 +11,7 @@ from bluesky.plan_stubs import mv, trigger_and_read, declare_stream
 from bluesky.utils import separate_devices
 from bluesky.preprocessors import stage_wrapper, plan_mutator, set_run_key_wrapper
 from .preprocessors import wrap_metadata
+from .suspenders import dynamic_suspenders
 from .groups import repeat
 
 # from ..settings import settings
@@ -147,6 +148,7 @@ def _energy_setup(func):
 
     return _inner
 
+
 def staged_baseline_wrapper(plan, devices, name="staged_baseline"):
     """
     Preprocessor that records a baseline of all `devices` after `open_run`
@@ -170,7 +172,7 @@ def staged_baseline_wrapper(plan, devices, name="staged_baseline"):
         messages from plan, with 'set' messages inserted
     """
 
-    def head():      
+    def head():
         yield from declare_stream(*devices, name=name)
         yield from trigger_and_read(devices, name=name)
 
@@ -214,23 +216,30 @@ def _nbs_setup_detectors_with_baseline(func):
 
         # for det in extra_dets:
         #    activate_detector(det)
-        print("Detector Setup Decorator")
+        print("Detector Setup Decorator with Baseline")
         if dwell is not None:
             yield from set_exposure(dwell, extra_dets=extra_dets)
-            
+
         all_dets = separate_devices(GLOBAL_BEAMLINE.detectors.active + extra_dets)
-        
+        # We need to stage only the baseline devices that are not already in the list of detectors
+        # In order to avoid double staging
         if hasattr(GLOBAL_BEAMLINE, "staged_baseline"):
-            staged_baseline_devices = separate_devices(GLOBAL_BEAMLINE.staged_baseline.values())
-            devices_to_stage = [dev for dev in staged_baseline_devices if dev not in all_dets]
+            staged_baseline_devices = separate_devices(
+                GLOBAL_BEAMLINE.staged_baseline.values()
+            )
+            devices_to_stage = [
+                dev for dev in staged_baseline_devices if dev not in all_dets
+            ]
         else:
             staged_baseline_devices = []
             devices_to_stage = []
 
         def inner():
             yield from func(all_dets, *args, **kwargs)
-        
-        ret = yield from stage_wrapper(staged_baseline_wrapper(inner(), staged_baseline_devices), devices_to_stage)
+
+        ret = yield from stage_wrapper(
+            staged_baseline_wrapper(inner(), staged_baseline_devices), devices_to_stage
+        )
 
         # for det in extra_dets:
         #    deactivate_detector(det)
@@ -238,6 +247,7 @@ def _nbs_setup_detectors_with_baseline(func):
         return ret
 
     return _inner
+
 
 def _nbs_setup_detectors(func):
     @merge_func(func, ["detectors"])
@@ -266,6 +276,7 @@ def _nbs_setup_detectors(func):
         return ret
 
     return _inner
+
 
 def _nbs_add_plot_md(func):
     @merge_func(func)
@@ -435,7 +446,7 @@ def dynamic_scan_wrapper(func):
         Wrapped scan function with all decorators applied
     """
     # Get base decorators
-    base_decorators = [merge_func(func), nbs_base_scan_decorator]
+    base_decorators = [merge_func(func), dynamic_suspenders, nbs_base_scan_decorator]
 
     # Get additional decorators from entrypoints
     additional_decorators = get_decorator_entrypoints()
