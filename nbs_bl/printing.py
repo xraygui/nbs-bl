@@ -1,4 +1,5 @@
 from IPython.utils.coloransi import TermColors as color
+from rich import print
 import sys
 import re
 from select import select
@@ -89,17 +90,34 @@ def colored(text, tint="white", attrs=[]):
     """
     tint = tint.lower()
     if "dark" in tint:
-        tint = "Dark" + tint[4:].capitalize()
+        tint = tint[4:].lower()
     elif "light" in tint:
-        tint = "Light" + tint[5:].capitalize()
+        tint = "bright_" + tint[5:].lower()
     elif "blink" in tint:
-        tint = "Blink" + tint[5:].capitalize()
+        tint = "bold " + tint[5:].lower()
     elif "no" in tint:
-        tint = "Normal"
+        tint = "reset"
     else:
-        tint = tint.capitalize()
-    return "{0}{1}{2}".format(getattr(color, tint), str(text), color.Normal)
+        tint = tint.lower()
+    return "[{0}]{1}[/{0}]".format(tint, str(text))
 
+
+# def colored(text, tint="white", attrs=[]):
+#     """
+#     A simple wrapper around IPython's interface to TermColors
+#     """
+#     tint = tint.lower()
+#     if "dark" in tint:
+#         tint = "Dark" + tint[4:].capitalize()
+#     elif "light" in tint:
+#         tint = "Light" + tint[5:].capitalize()
+#     elif "blink" in tint:
+#         tint = "Blink" + tint[5:].capitalize()
+#     elif "no" in tint:
+#         tint = "Normal"
+#     else:
+#         tint = tint.capitalize()
+#     return "{0}{1}{2}".format(getattr(color, tint), str(text), color.Normal)
 
 def read_input(message, default, timeout, secs):
     print(message)
