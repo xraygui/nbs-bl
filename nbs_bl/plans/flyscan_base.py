@@ -77,6 +77,7 @@ def fly_scan(
     md: Optional[dict] = None,
     period: Optional[float] = None,
     stream: bool = True,
+    **kwargs,
 ):
     """
     Perform a fly scan over the specified motor range.
@@ -161,7 +162,7 @@ def fly_scan(
             except RuntimeError as ex:
                 warn(repr(ex), RuntimeWarning)
 
-    yield from call_obj(motor, "preflight", start, stop, *args)
+    yield from call_obj(motor, "preflight", start, stop, *args, **kwargs)
 
     @bpp.stage_decorator(readers)
     @bpp.run_decorator(md=_md)
