@@ -62,7 +62,7 @@ class GlobalStatusManager:
 
     def request_status_dict(self, key, use_redis=False, prefix=None):
         """
-        Request a new status dictionary
+        Create and return a new status dictionary
 
         Parameters
         ----------
