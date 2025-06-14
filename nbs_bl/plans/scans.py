@@ -31,9 +31,9 @@ _scan_list = [
 ]
 
 for _scan in _scan_list:
-    _newscan = dynamic_scan_wrapper(_scan)
     _fixedname = f"nbs_{_scan.__name__}"
-    _newscan.__name__ = _fixedname
+    _newscan = dynamic_scan_wrapper(_scan, func_name=_fixedname)
+    # _newscan.__name__ = _fixedname
     globals()[_fixedname] = _newscan
     add_to_scan_list(_newscan)
 
