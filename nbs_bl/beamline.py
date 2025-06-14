@@ -233,13 +233,15 @@ class BeamlineModel:
                 is_primary=False,
             )
 
-    def _setup_sampleholder(self, holder, samples_key, current_key, is_primary=False):
+    def _setup_sampleholder(
+        self, manipulator, samples_key, current_key, is_primary=False
+    ):
         """
         Set up a sampleholder with Redis data.
 
         Parameters
         ----------
-        holder : object
+        manipulator : object
             The sampleholder device to set up
         samples_key : str
             Redis key for samples data
@@ -248,6 +250,7 @@ class BeamlineModel:
         is_primary : bool, optional
             Whether this is the primary sampleholder
         """
+        holder = manipulator.holder
         tmp_samples = GLOBAL_USER_STATUS.request_status_dict(
             samples_key, use_redis=True
         )
@@ -265,7 +268,7 @@ class BeamlineModel:
             self.current_sample = holder.current_sample
 
         try:
-            holder.reload_sample_frames()
+            manipulator.reload_sample_frames()
         except Exception as e:
             print(f"Error reloading sample frames for primary sampleholder: {e}")
 

@@ -29,23 +29,14 @@ class SampleHolderBase(Device):
         self.attachment_frame = self.manip_frame.make_child_frame(
             origin=attachment_point
         )
-
-        # Request status containers from global manager
-        self.samples = {}
-        # GLOBAL_USER_STATUS.request_status_dict(
-        #     f"{self.name.upper()}_SAMPLES", use_redis=use_redis
-        # )
-        # current_sample contains metadata, can use Redis
-        self.current_sample = {}
-        # GLOBAL_USER_STATUS.request_status_dict(
-        #     f"{self.name.upper()}_CURRENT", use_redis=use_redis
-        # )
-
-        self.sample_frames = {}
-        self.holder_md = {}
-        self.holder_frames = {}
-        self.current_frame = self.attachment_frame
         self.set_holder(holder)
+
+    @property
+    def samples(self):
+        if self.holder is not None:
+            return self.holder.samples
+        else:
+            return {}
 
     def set_holder(self, holder):
         self.holder = holder
@@ -60,50 +51,22 @@ class SampleHolderBase(Device):
 
     def clear_holder(self):
         self.set_holder(None)
-        self.samples.clear()
-        self.sample_frames.clear()
-        self.current_sample.clear()
 
     def clear_samples(self):
-        self.samples.clear()
-        self.sample_frames.clear()
-        self.current_sample.clear()
+        if self.holder is not None:
+            self.holder.clear_samples()
 
     def add_sample(self, name, id, position, description="", origin="holder", **kwargs):
-        if origin == "absolute":
-            sample_frame = position
-        else:
-            sample_frame = self.holder.make_sample_frame(position)
-
-        self.samples[id] = {
-            "name": name,
-            "description": description,
-            "position": position,
-            "sample_id": id,
-            "origin": origin,
-            **kwargs,
-        }
-        self.sample_frames[id] = sample_frame
+        if self.holder is not None:
+            self.holder.add_sample(name, id, position, description, origin, **kwargs)
 
     def remove_sample(self, sample_id):
-        self.samples.pop(sample_id, None)
-        self.sample_frames.pop(sample_id, None)
-        if self.current_sample.get("sample_id") == sample_id:
-            self.current_sample.clear()
+        if self.holder is not None:
+            self.holder.remove_sample(sample_id)
 
     def set_sample(self, sample_id):
-        if sample_id in self.sample_frames:
-            self.current_frame = self.sample_frames[sample_id]
-            self.current_sample.clear()
-            self.current_sample.update(self.samples[sample_id])
-        elif sample_id in self.holder_frames:
-            self.current_frame = self.holder_frames[sample_id]
-            self.current_sample.clear()
-            self.current_sample.update(self.holder_md[sample_id])
-        else:
-            raise KeyError(
-                f"Sample ID {sample_id} not found in sample frames or holder frames"
-            )
+        if self.holder is not None:
+            self.holder.set_sample(sample_id)
 
     def load_sample_dict(self, samples, clear=True):
         """
@@ -126,9 +89,6 @@ class SampleHolderBase(Device):
             name = sdict.pop("name")
             description = sdict.pop("description", name)
             position = sdict.pop("position")
-            # add_sample_to_globals(
-            #     sample_id, name, position, side, thickness, description, **sdict
-            # )
             self.add_sample(
                 name,
                 sample_id,
@@ -136,11 +96,11 @@ class SampleHolderBase(Device):
                 description=description,
                 **sdict,
             )
-        return
 
     def load_sample_file(self, filename, clear=True):
-        samples = self.holder.read_sample_file(filename)
-        self.load_sample_dict(samples, clear=clear)
+        if self.holder is not None:
+            samples = self.holder.read_sample_file(filename)
+            self.load_sample_dict(samples, clear=clear)
 
     def reload_sample_frames(self):
         """Reload sample frames from the persisted samples dictionary.
@@ -152,17 +112,15 @@ class SampleHolderBase(Device):
         Note: This requires a holder to be set and will skip any samples
         with origin="absolute" since those frames are stored directly.
         """
-        self.sample_frames.clear()
-        for sample_id, sample in self.samples.items():
-            if self.holder is None and sample["origin"] != "absolute":
-                continue
-
-            if sample["origin"] == "absolute":
-                self.sample_frames[sample_id] = sample["position"]
-            else:
-                self.sample_frames[sample_id] = self.holder.make_sample_frame(
-                    sample["position"]
-                )
+        if self.holder is not None:
+            self.holder.clear_samples()
+            for sample_id, sample in self.holder.samples.items():
+                if sample["origin"] == "absolute":
+                    self.holder.sample_frames[sample_id] = sample["position"]
+                else:
+                    self.holder.sample_frames[sample_id] = (
+                        self.holder.make_sample_frame(sample["position"])
+                    )
 
     def move_sample(self, sample_id, **positions):
         position = self.get_sample_position(sample_id, **positions)
@@ -190,24 +148,28 @@ class Manipulator1AxBase(PseudoPositioner, SampleHolderBase):
         """
         Takes a sample frame position and converts it into real manipulator coordinates
         """
-        if isinstance(self.current_frame, Frame):
-            # If current_frame is a Frame object, use the existing conversion
-            (position,) = self.current_frame.to_frame(pp, self.manip_frame)
+        if self.holder is None:
+            return self.RealPosition(pp.sx)
+
+        current_frame = self.holder.get_current_frame()
+        if isinstance(current_frame, Frame):
+            (position,) = current_frame.to_frame(pp, self.manip_frame)
         else:
-            # If current_frame is a coordinate dict, add its value to pp
-            frame_coords = self.current_frame.get("coordinates", [0])
+            frame_coords = current_frame.get("coordinates", [0])
             position = pp.sx + frame_coords[0]
 
         return self.RealPosition(position)
 
     @real_position_argument
     def inverse(self, rp):
-        if isinstance(self.current_frame, Frame):
-            # If current_frame is a Frame object, use the existing conversion
-            (position,) = self.manip_frame.to_frame(rp, self.current_frame)
+        if self.holder is None:
+            return self.PseudoPosition(rp.sx)
+
+        current_frame = self.holder.get_current_frame()
+        if isinstance(current_frame, Frame):
+            (position,) = self.manip_frame.to_frame(rp, current_frame)
         else:
-            # If current_frame is a coordinate dict, subtract its value from rp
-            frame_coords = self.current_frame.get("coordinates", [0])
+            frame_coords = current_frame.get("coordinates", [0])
             position = rp.sx - frame_coords[0]
         return self.PseudoPosition(position)
 
@@ -243,19 +205,16 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
     def forward(self, pp):
         """
         Takes a sample frame position and converts it into real manipulator coordinates
-
-        bp = self.holder.frame_to_beam(*pp)
-        if isinstance(bp, (float, int)):
-            bp = (bp,)
-        rp = self.beam_to_manip_frame(*bp)
-        return self.RealPosition(*rp)
         """
+        if self.holder is None:
+            return self.RealPosition(*pp)
+
         sample_coords = pp[:-1]
         r = pp[-1]
 
-        if isinstance(self.current_frame, Frame):
-            # If current_frame is a Frame object, use the existing conversion
-            xp, yp, zp = self.current_frame.to_frame(
+        current_frame = self.holder.get_current_frame()
+        if isinstance(current_frame, Frame):
+            xp, yp, zp = current_frame.to_frame(
                 sample_coords,
                 self.manip_frame,
             )
@@ -265,8 +224,7 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
                 (xp, yp, zp), r * np.pi / 180.0, ax1=self.ax1, ax2=self.ax2
             )
         else:
-            # If current_frame is a coordinate dict, add its values to sample_coords
-            frame_coords = self.current_frame.get("coordinates", [0, 0, 0, 0])
+            frame_coords = current_frame.get("coordinates", [0, 0, 0, 0])
             x = sample_coords[0] + frame_coords[0]
             y = sample_coords[1] + frame_coords[1]
             z = sample_coords[2] + frame_coords[2]
@@ -278,25 +236,21 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
     def inverse(self, rp):
         """
         Takes a real manipulator position and converts into frame coordinates
-
-        bp = self.manip_to_beam_frame(*rp)
-        pp = self.holder.beam_to_frame(*bp)
-        if isinstance(pp, (float, int)):
-            pp = (pp,)
-        return self.PseudoPosition(*pp)
         """
-        real_coords = rp[:-1]
+        if self.holder is None:
+            return self.PseudoPosition(*rp)
 
-        if isinstance(self.current_frame, Frame):
+        real_coords = rp[:-1]
+        current_frame = self.holder.get_current_frame()
+
+        if isinstance(current_frame, Frame):
             r = self.manip_rotation_to_sample_rotation(rp[-1])
             xp, yp, zp = self.manip_frame.rotate_in_plane(
                 real_coords, -rp[-1] * np.pi / 180.0, ax1=self.ax1, ax2=self.ax2
             )
-            # If current_frame is a Frame object, use the existing conversion
-            x, y, z = self.manip_frame.to_frame((xp, yp, zp), self.current_frame)
+            x, y, z = self.manip_frame.to_frame((xp, yp, zp), current_frame)
         else:
-            # If current_frame is a coordinate dict, subtract its values from xp, yp, zp, r
-            frame_coords = self.current_frame.get("coordinates", [0, 0, 0, 0])
+            frame_coords = current_frame.get("coordinates", [0, 0, 0, 0])
             x = rp[0] - frame_coords[0]
             y = rp[1] - frame_coords[1]
             z = rp[2] - frame_coords[2]
@@ -314,7 +268,9 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
     def get_sample_position(self, sample_id=None, **positions):
         if sample_id is not None:
             self.set_sample(sample_id)
-        if isinstance(self.current_frame, Frame):
+        if self.holder is not None and isinstance(
+            self.holder.get_current_frame(), Frame
+        ):
             position = [p for p in self.default_coords]
         else:
             position = [0, 0, 0, 0]
@@ -331,7 +287,7 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
     def sample_rotation_to_manip_rotation(self, r):
         # Assumes that z-axis is the surface normal!!
         grazing = find_rotation(
-            self.current_frame,
+            self.holder.get_current_frame(),
             (1, 0, 0),
             self.manip_frame,
             self.beam_direction,
@@ -341,7 +297,7 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
 
     def manip_rotation_to_sample_rotation(self, r):
         grazing = find_rotation(
-            self.current_frame,
+            self.holder.get_current_frame(),
             (1, 0, 0),
             self.manip_frame,
             self.beam_direction,
