@@ -54,6 +54,8 @@ class BeamlineModel:
         "supplemental_data",
         "devices",
         "redis",
+        "RE",
+        "md",
     ]
 
     def __init__(self, *args, **kwargs):
@@ -62,6 +64,7 @@ class BeamlineModel:
         """
         self.supplemental_data = SupplementalData()
         self.md = {}
+        self.RE = None
         self.settings = StatusDict()
         self.devices = StatusDict()
         self.energy = None

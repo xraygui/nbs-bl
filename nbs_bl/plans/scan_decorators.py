@@ -13,7 +13,6 @@ from bluesky.preprocessors import stage_wrapper, plan_mutator, set_run_key_wrapp
 from .preprocessors import wrap_metadata
 from .suspenders import dynamic_suspenders
 from .groups import repeat
-import copy
 
 # from ..settings import settings
 from typing import Optional
@@ -376,8 +375,9 @@ def _nbs_add_plan_args(func):
         _md.update(
             {
                 "plan_passed_name": func.__name__,
-                "plan_passed_args": args,
-                "plan_passed_kwargs": kwargs,
+                # Don't have a way to normalize args and kwargs, copy.deepcopy is dangerous
+                # "plan_passed_args": args,
+                # "plan_passed_kwargs": kwargs,
                 "time_human": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
         )
