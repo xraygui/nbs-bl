@@ -3,10 +3,11 @@ from ..plans.scans import nbs_gscan
 from ..utils import merge_func
 from ..plans.preprocessors import wrap_metadata
 from .plan_stubs import set_roi, clear_one_roi
-from ..help import _add_to_import_list, add_to_func_list
+from ..help import _add_to_import_list, add_to_func_list, add_to_plan_time_dict
 from ..queueserver import GLOBAL_USER_STATUS
 from ..status import StatusDict
 from ..beamline import GLOBAL_BEAMLINE
+from .scan_base import _make_gscan_points
 
 # from ..settings import GLOBAL_SETTINGS as settings
 from os.path import join
@@ -103,7 +104,15 @@ def load_xas(filename):
             add_to_xas_list(
                 xas_func, key, name=name, element=element, edge=edge, region=region
             )
-
+            points = len(_make_gscan_points(*region))
+            add_to_plan_time_dict(
+                xas_func,
+                "generic_estimate",
+                fixed=5,
+                overhead=0.5,
+                dwell="dwell",
+                points=points,
+            )
             # Store the function
             generated_plans[key] = xas_func
 

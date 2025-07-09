@@ -1,7 +1,7 @@
 from .scan_decorators import dynamic_scan_wrapper
 from .scan_base import _make_gscan_points
 from .flyscan_base import fly_scan
-from ..help import add_to_scan_list
+from ..help import add_to_scan_list, add_to_plan_time_dict
 from ..utils import merge_func
 from ..beamline import GLOBAL_BEAMLINE as bl
 
@@ -36,6 +36,41 @@ for _scan in _scan_list:
     # _newscan.__name__ = _fixedname
     globals()[_fixedname] = _newscan
     add_to_scan_list(_newscan)
+
+add_to_plan_time_dict(
+    nbs_count, "generic_estimate", fixed=0, overhead=0.05, dwell="dwell", points="num"
+)
+for _scan in [
+    bp.scan,
+    nbs_scan,
+    bp.rel_scan,
+    nbs_rel_scan,
+    bp.log_scan,
+    nbs_log_scan,
+    bp.rel_log_scan,
+    nbs_rel_log_scan,
+]:
+    add_to_plan_time_dict(
+        _scan, "generic_estimate", fixed=5, overhead=0.5, dwell="dwell", points="num"
+    )
+for _scan in [bp.list_scan, nbs_list_scan, bp.rel_list_scan, nbs_rel_list_scan]:
+    add_to_plan_time_dict(
+        _scan, "list_scan_estimate", fixed=5, overhead=0.5, dwell="dwell"
+    )
+for _scan in [bp.grid_scan, nbs_grid_scan, bp.rel_grid_scan, nbs_rel_grid_scan]:
+    add_to_plan_time_dict(
+        _scan, "grid_scan_estimate", fixed=5, overhead=0.5, dwell="dwell"
+    )
+
+for _scan in [
+    bp.list_grid_scan,
+    nbs_list_grid_scan,
+    bp.rel_list_grid_scan,
+    nbs_rel_list_grid_scan,
+]:
+    add_to_plan_time_dict(
+        _scan, "list_grid_scan_estimate", fixed=5, overhead=0.5, dwell="dwell"
+    )
 
 
 @add_to_scan_list
@@ -86,3 +121,10 @@ def nbs_energy_scan(*args, **kwargs):
     """
     motor = bl.energy
     return (yield from nbs_gscan(motor, *args, **kwargs))
+
+
+for _scan in [nbs_gscan, nbs_energy_scan]:
+    add_to_plan_time_dict(_scan, "gscan_estimate", fixed=5, overhead=0.5, dwell="dwell")
+
+for _scan in [fly_scan, nbs_fly_scan]:
+    add_to_plan_time_dict(_scan, "fly_scan_estimate", fixed=5)
