@@ -60,6 +60,7 @@ def add_to_plan_time_dict(
     dwell="dwell",
     points=None,
     reset=0,
+    **kwargs,
 ):
     key = f.__name__
     if key not in GLOBAL_PLAN_TIME_DICT:
@@ -70,6 +71,7 @@ def add_to_plan_time_dict(
     GLOBAL_PLAN_TIME_DICT[key]["dwell"] = dwell
     GLOBAL_PLAN_TIME_DICT[key]["points"] = points
     GLOBAL_PLAN_TIME_DICT[key]["reset"] = reset
+    GLOBAL_PLAN_TIME_DICT[key].update(kwargs)
     return f
 
 
