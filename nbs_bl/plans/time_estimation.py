@@ -70,18 +70,19 @@ def with_repeat(estimator_func):
     return wrapper
 
 
+def get_dwell(plan_args, estimation_dict):
+    dwell = estimation_dict.get("dwell", "dwell")
+    if isinstance(dwell, str):
+        return plan_args.get(dwell, 0)
+    else:
+        return dwell
+
+
 @with_repeat
 def generic_estimate(plan_name, plan_args, estimation_dict):
     a = estimation_dict.get("fixed", 0)
     b = estimation_dict.get("overhead", 0)
-    if "dwell" in estimation_dict:
-        dwell = estimation_dict.get("dwell")
-        if isinstance(dwell, str):
-            c = plan_args.get(dwell, 1)
-        else:
-            c = dwell
-    else:
-        c = 0
+    c = get_dwell(plan_args, estimation_dict)
     if "points" in estimation_dict:
         points = estimation_dict.get("points")
         if isinstance(points, str):
@@ -100,14 +101,8 @@ def generic_estimate(plan_name, plan_args, estimation_dict):
 def list_scan_estimate(plan_name, plan_args, estimation_dict):
     a = estimation_dict.get("fixed", 0)
     b = estimation_dict.get("overhead", 0)
-    if "dwell" in estimation_dict:
-        dwell = estimation_dict.get("dwell")
-        if isinstance(dwell, str):
-            c = plan_args.get(dwell, 1)
-        else:
-            c = dwell
-    else:
-        c = 0
+    c = get_dwell(plan_args, estimation_dict)
+
     n = len(plan_args.get("args", ["", []])[1])
     return a + b * n + c * n
 
@@ -116,14 +111,8 @@ def list_scan_estimate(plan_name, plan_args, estimation_dict):
 def grid_scan_estimate(plan_name, plan_args, estimation_dict):
     a = estimation_dict.get("fixed", 0)
     b = estimation_dict.get("overhead", 0)
-    if "dwell" in estimation_dict:
-        dwell = estimation_dict.get("dwell")
-        if isinstance(dwell, str):
-            c = plan_args.get(dwell, 1)
-        else:
-            c = dwell
-    else:
-        c = 0
+    c = get_dwell(plan_args, estimation_dict)
+
     args = plan_args.get("args")
     n_axes = len(args) // 4
     n_points = 1
@@ -136,14 +125,8 @@ def grid_scan_estimate(plan_name, plan_args, estimation_dict):
 def list_grid_scan_estimate(plan_name, plan_args, estimation_dict):
     a = estimation_dict.get("fixed", 0)
     b = estimation_dict.get("overhead", 0)
-    if "dwell" in estimation_dict:
-        dwell = estimation_dict.get("dwell")
-        if isinstance(dwell, str):
-            c = plan_args.get(dwell, 1)
-        else:
-            c = dwell
-    else:
-        c = 0
+    c = get_dwell(plan_args, estimation_dict)
+
     args = plan_args.get("args")
     n_axes = len(args) // 2
     n_points = 1
@@ -171,18 +154,15 @@ def fly_scan_estimate(plan_name, plan_args, estimation_dict):
 
 @with_repeat
 def gscan_estimate(plan_name, plan_args, estimation_dict):
-    region = plan_args.get("args")
+    if "region" in estimation_dict:
+        region = estimation_dict.get("region")
+    else:
+        region = plan_args.get("args")
     if len(region) % 2 == 0:
         region = region[1:]  # First argument is motor name
     points = len(_make_gscan_points(*region))
     a = estimation_dict.get("fixed", 0)
     b = estimation_dict.get("overhead", 0)
-    if "dwell" in estimation_dict:
-        dwell = estimation_dict.get("dwell")
-        if isinstance(dwell, str):
-            c = plan_args.get(dwell, 1)
-        else:
-            c = dwell
-    else:
-        c = 0
+    c = get_dwell(plan_args, estimation_dict)
+
     return a + b * points + c * points

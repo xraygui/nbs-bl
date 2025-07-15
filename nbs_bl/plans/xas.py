@@ -104,14 +104,13 @@ def load_xas(filename):
             add_to_xas_list(
                 xas_func, key, name=name, element=element, edge=edge, region=region
             )
-            points = len(_make_gscan_points(*region))
             add_to_plan_time_dict(
                 xas_func,
-                "generic_estimate",
+                "gscan_estimate",
                 fixed=5,
                 overhead=0.5,
                 dwell="dwell",
-                points=points,
+                region=region,
             )
             # Store the function
             generated_plans[key] = xas_func
