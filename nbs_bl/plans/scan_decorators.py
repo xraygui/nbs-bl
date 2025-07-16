@@ -18,6 +18,7 @@ from .groups import repeat
 from typing import Optional
 from importlib.metadata import entry_points
 from functools import reduce
+from datetime import datetime
 
 
 def wrap_scantype(scantype):
@@ -352,6 +353,7 @@ def _nbs_add_comment(func):
 
 def nbs_base_scan_decorator(func):
     @repeat
+    @_nbs_add_plan_args
     @_beamline_setup
     @_nbs_setup_detectors
     @_nbs_add_sample_md
@@ -360,6 +362,26 @@ def nbs_base_scan_decorator(func):
     @merge_func(func)
     def _inner(*args, **kwargs):
         return (yield from func(*args, **kwargs))
+
+    return _inner
+
+
+def _nbs_add_plan_args(func):
+    @merge_func(func)
+    def _inner(*args, md: Optional[dict] = None, **kwargs):
+        md = md or {}
+        _md = {}
+        _md.update(md)
+        _md.update(
+            {
+                "plan_passed_name": func.__name__,
+                # Don't have a way to normalize args and kwargs, copy.deepcopy is dangerous
+                # "plan_passed_args": args,
+                # "plan_passed_kwargs": kwargs,
+                "time_human": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+        return (yield from func(*args, md=_md, **kwargs))
 
     return _inner
 
@@ -430,7 +452,7 @@ def get_decorator_entrypoints():
     return decorators
 
 
-def dynamic_scan_wrapper(func):
+def dynamic_scan_wrapper(func, func_name=None):
     """
     A flexible wrapper for Bluesky scans that incorporates base NBS functionality
     and additional decorators from entrypoints.
@@ -446,7 +468,11 @@ def dynamic_scan_wrapper(func):
         Wrapped scan function with all decorators applied
     """
     # Get base decorators
-    base_decorators = [merge_func(func), dynamic_suspenders, nbs_base_scan_decorator]
+    base_decorators = [
+        merge_func(func, use_func_name=False),
+        dynamic_suspenders,
+        nbs_base_scan_decorator,
+    ]
 
     # Get additional decorators from entrypoints
     additional_decorators = get_decorator_entrypoints()
@@ -454,11 +480,15 @@ def dynamic_scan_wrapper(func):
     # Combine all decorators
     all_decorators = base_decorators + additional_decorators + [wrap_plan_name]
 
+    func_name = func_name or func.__name__
+
     # Apply decorators in order
     def _inner(*args, **kwargs):
-        print("Running ", func.__name__)
+        print("Running ", func_name)
         return (yield from func(*args, **kwargs))
 
+    if func_name is not None:
+        _inner.__name__ = func_name
     # Apply all decorators in sequence
     wrapped = reduce(lambda f, dec: dec(f), all_decorators, _inner)
 
