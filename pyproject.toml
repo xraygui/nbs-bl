@@ -23,3 +23,6 @@ dependencies = {file = ["requirements.txt"]}
 
 [project.entry-points."nbs_bl.plan_loaders"]
 xas = "nbs_bl.plans.xas:load_xas"
+
+[project.scripts]
+modify-regions = "nbs_bl.tests.modify_regions:main"
