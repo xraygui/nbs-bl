@@ -19,6 +19,7 @@ from typing import Optional
 from importlib.metadata import entry_points
 from functools import reduce
 from datetime import datetime
+from bluesky_queueserver import parameter_annotation_decorator
 
 
 def wrap_scantype(scantype):
@@ -203,6 +204,7 @@ def staged_baseline_wrapper(plan, devices, name="staged_baseline"):
 
 
 def _nbs_setup_detectors_with_baseline(func):
+    @parameter_annotation_decorator({"parameters": {"dwell": {"min": 0}}})
     @merge_func(func, ["detectors"])
     def _inner(*args, extra_dets=[], dwell: Optional[float] = None, **kwargs):
         """
@@ -251,6 +253,7 @@ def _nbs_setup_detectors_with_baseline(func):
 
 
 def _nbs_setup_detectors(func):
+    @parameter_annotation_decorator({"parameters": {"dwell": {"min": 0}}})
     @merge_func(func, ["detectors"])
     def _inner(*args, extra_dets=[], dwell: Optional[float] = None, **kwargs):
         """

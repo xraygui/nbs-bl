@@ -28,7 +28,7 @@ class Monochromator(DeadbandMixin, PVPositioner):
 
 def EnPosFactory(prefix, *, name, beamline=None, **kwargs):
     if beamline is not None:
-        rotation_motor = beamline.devices["manipr"]
+        rotation_motor = beamline.devices.get("manipr", None)
     else:
         rotation_motor = None
     return EnPos(prefix, rotation_motor=rotation_motor, name=name, **kwargs)
