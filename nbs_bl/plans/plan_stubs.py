@@ -12,6 +12,16 @@ from .conditions import is_signal_below, is_signal_equals, is_signal_above
 GLOBAL_EXPOSURE_TIME = 1.0
 
 
+def update_plan_status(status):
+    ret = yield Msg("update_plan_status", None, status)
+    return ret
+
+
+def clear_plan_status():
+    ret = yield Msg("clear_plan_status")
+    return ret
+
+
 def call_obj(obj, method, *args, **kwargs):
     ret = yield Msg("call_obj", obj, *args, method=method, **kwargs)
     return ret

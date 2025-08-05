@@ -6,11 +6,17 @@ from ..detectors import (
     activate_detector_set,
 )
 from ..utils import merge_func
-from .plan_stubs import set_exposure, sampleholder_set_sample, sampleholder_move_sample
+from .plan_stubs import (
+    set_exposure,
+    sampleholder_set_sample,
+    sampleholder_move_sample,
+    update_plan_status,
+    clear_plan_status,
+)
 from bluesky.plan_stubs import mv, trigger_and_read, declare_stream
 from bluesky.utils import separate_devices
 from bluesky.preprocessors import stage_wrapper, plan_mutator, set_run_key_wrapper
-from .preprocessors import wrap_metadata
+from .preprocessors import wrap_metadata, plan_status_decorator
 from .suspenders import dynamic_suspenders
 from .groups import repeat
 
@@ -86,6 +92,7 @@ def _sample_setup_with_move(func):
             be the default for the sampleholder (typically moving the sample into the beam at a typical angle)
         """
         if sample is not None:
+            yield from update_plan_status("moving_sample")
             yield from sampleholder_move_sample(
                 GLOBAL_BEAMLINE.primary_sampleholder, sample, **sample_position
             )
@@ -356,6 +363,7 @@ def _nbs_add_comment(func):
 
 def nbs_base_scan_decorator(func):
     @repeat
+    @plan_status_decorator
     @_nbs_add_plan_args
     @_beamline_setup
     @_nbs_setup_detectors
