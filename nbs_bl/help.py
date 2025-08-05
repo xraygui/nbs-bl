@@ -2,12 +2,21 @@ from .status import StatusList
 from .queueserver import GLOBAL_USER_STATUS
 from .printing import boxed_text
 
-GLOBAL_HELP_DICTIONARY = {"functions": {}, "plans": {}, "scans": {}, "xas": {}}
+GLOBAL_HELP_DICTIONARY = {
+    "functions": {},
+    "plans": {},
+    "scans": {},
+    "xas": {},
+    "conditions": {},
+}
 GLOBAL_IMPORT_DICTIONARY = {}
 
 # Request status lists from the global manager
 GLOBAL_PLAN_LIST = GLOBAL_USER_STATUS.request_status_list("PLAN_LIST", use_redis=True)
 GLOBAL_SCAN_LIST = GLOBAL_USER_STATUS.request_status_list("SCAN_LIST", use_redis=True)
+GLOBAL_CONDITION_LIST = GLOBAL_USER_STATUS.request_status_list(
+    "CONDITION_LIST", use_redis=True
+)
 GLOBAL_PLAN_TIME_DICT = GLOBAL_USER_STATUS.request_status_dict(
     "PLAN_TIME_DICT", use_redis=True
 )
@@ -49,6 +58,15 @@ def add_to_scan_list(f):
     """
     key = _add_to_import_list(f, "scans")
     GLOBAL_SCAN_LIST.append(key)
+    return f
+
+
+def add_to_condition_list(f):
+    """
+    A function decorator that will add the condition to the built-in list
+    """
+    key = _add_to_import_list(f, "conditions")
+    GLOBAL_CONDITION_LIST.append(key)
     return f
 
 
