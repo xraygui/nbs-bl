@@ -121,12 +121,16 @@ def plan_status_decorator(func):
 
     """
 
-    status = "Running " + func.__name__
-    update_msgs = [Msg("update_plan_status", None, status)]
-    clear_msgs = [Msg("clear_plan_status")]
-
     @merge_func(func)
-    def _inner(*args, **kwargs):
+    def _inner(*args, md: Optional[dict] = None, **kwargs):
+        # Get plan name from metadata if available
+        md = md or {}
+        plan_name = md.get("plan_name", func.__name__) if md else func.__name__
+        status = "Running " + plan_name
+        print(f"Plan status decorator: {status}")
+        update_msgs = [Msg("update_plan_status", None, status)]
+        clear_msgs = [Msg("clear_plan_status")]
+
         def insert_after_open(msg):
             if msg.command == "open_run":
 
@@ -149,7 +153,7 @@ def plan_status_decorator(func):
                 return None, None
 
         # Apply nested mutations.
-        plan1 = plan_mutator(func(*args, **kwargs), insert_after_open)
+        plan1 = plan_mutator(func(*args, md=md, **kwargs), insert_after_open)
         plan2 = plan_mutator(plan1, insert_before_close)
         return (yield from plan2)
 
