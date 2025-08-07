@@ -1,8 +1,8 @@
 from os.path import join
 from importlib.util import find_spec
+from importlib.metadata import entry_points
 from .beamline import GLOBAL_BEAMLINE
 from .queueserver import request_update, get_status
-import pkg_resources
 
 
 def get_startup_dir():
@@ -31,7 +31,7 @@ def load_plans(startup_dir):
     plan_settings = GLOBAL_BEAMLINE.settings.get("plans", {})
     print(f"Loading plans from {startup_dir}")
     # Iterate through all registered plan loaders
-    for entry_point in pkg_resources.iter_entry_points(group="nbs_bl.plan_loaders"):
+    for entry_point in entry_points(group="nbs_bl.plan_loaders"):
         plan_type = entry_point.name
         print(f"Loading {plan_type} plans")
         plan_files = plan_settings.get(plan_type, [])

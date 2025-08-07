@@ -63,6 +63,7 @@ def _eref_setup(func):
         _md = {}
         blconf = GLOBAL_BEAMLINE.config.get("configuration", {})
         if eref_sample is not None and blconf.get("has_motorized_eref", False):
+            yield from update_plan_status("moving energy reference sample")
             yield from sampleholder_move_sample(
                 GLOBAL_BEAMLINE.reference_sampleholder, eref_sample
             )
@@ -129,6 +130,7 @@ def _slit_setup(func):
             If not None, will set the beamline exit slit prior to the plan start.
         """
         if eslit is not None:
+            yield from update_plan_status("setting exit slit")
             yield from mv(GLOBAL_BEAMLINE.slits, eslit)
         return (yield from func(*args, **kwargs))
 
@@ -149,9 +151,14 @@ def _energy_setup(func):
         energy : float, optional
             If not None, will set the beamline energy prior to the plan start.
         """
+        print("Energy Setup Decorator")
+
         if energy is not None:
+            print("Setting up energy")
+            yield from update_plan_status("setting up energy")
             yield from mv(GLOBAL_BEAMLINE.energy, energy)
         if polarization is not None and hasattr(GLOBAL_BEAMLINE, "polarization"):
+            yield from update_plan_status("setting up polarization")
             yield from mv(GLOBAL_BEAMLINE.polarization, polarization)
         return (yield from func(*args, **kwargs))
 
