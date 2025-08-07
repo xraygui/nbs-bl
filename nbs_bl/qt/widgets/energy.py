@@ -10,6 +10,7 @@ from qtpy.QtWidgets import (
 from nbs_gui.views.views import AutoControl, AutoMonitor
 from nbs_gui.views.motor import MotorMonitor
 from bluesky_queueserver_api import BPlan
+from nbs_gui.settings import get_top_level_model
 
 
 class EnergyMonitor(QGroupBox):
@@ -30,25 +31,28 @@ class EnergyMonitor(QGroupBox):
     def __init__(self, energy, parent_model, *args, orientation=None, **kwargs):
         print("Initializing EnergyMonitor")
         super().__init__("Energy Monitor", *args, **kwargs)
+        self.model = energy
+        self.top_level_model = get_top_level_model()
+        self.beamline_model = self.top_level_model.beamline
         vbox1 = QVBoxLayout()
 
         print("Adding energy monitor")
-        vbox1.addWidget(AutoMonitor(energy.energy, parent_model))
+        vbox1.addWidget(AutoMonitor(self.model.energy, parent_model))
 
         has_slits = (
-            hasattr(parent_model.beamline, "slits")
-            and parent_model.beamline.slits is not None
+            hasattr(self.beamline_model, "slits")
+            and self.beamline_model.slits is not None
         )
         if has_slits:
             print("Adding slits monitor")
-            vbox1.addWidget(AutoMonitor(parent_model.beamline.slits, parent_model))
+            vbox1.addWidget(AutoMonitor(self.beamline_model.slits, parent_model))
 
         print("Adding CFF monitor")
-        vbox1.addWidget(AutoMonitor(energy.cff, parent_model))
+        vbox1.addWidget(AutoMonitor(self.model.cff, parent_model))
 
         print("Adding grating motor monitor")
-        if hasattr(energy, "grating_motor"):
-            vbox1.addWidget(MotorMonitor(energy.grating_motor, parent_model))
+        if hasattr(self.model, "grating_motor"):
+            vbox1.addWidget(MotorMonitor(self.model.grating_motor, parent_model))
 
         self.setLayout(vbox1)
         print("EnergyMonitor initialization complete")
@@ -75,7 +79,8 @@ class EnergyControl(QGroupBox):
 
         self.model = energy
         self.parent_model = parent_model
-        self.REClientModel = parent_model.run_engine
+        top_model = get_top_level_model()
+        self.REClientModel = top_model.run_engine
 
         print("Creating Energy Control layout")
         hbox = QHBoxLayout()
@@ -87,12 +92,12 @@ class EnergyControl(QGroupBox):
             hbox.addWidget(AutoControl(energy.energy, parent_model))
 
         has_slits = (
-            hasattr(parent_model.beamline, "slits")
-            and parent_model.beamline.slits is not None
+            hasattr(top_model.beamline, "slits")
+            and top_model.beamline.slits is not None
         )
         if has_slits:
             print("Adding exit slit control")
-            ebox.addWidget(AutoControl(parent_model.beamline.slits, parent_model))
+            ebox.addWidget(AutoControl(top_model.beamline.slits, parent_model))
 
         print("Adding CFF and grating monitors")
         if hasattr(energy, "cff"):
@@ -140,7 +145,8 @@ class AdvancedEnergyControl(QGroupBox):
         super().__init__("Advanced Energy Control", parent)
         self.model = model
         self.parent_model = parent_model
-        self.REClientModel = parent_model.run_engine
+        top_model = get_top_level_model()
+        self.REClientModel = top_model.run_engine
 
         layout = QVBoxLayout()
 
