@@ -4,6 +4,7 @@ from .flyscan_base import fly_scan
 from ..help import add_to_scan_list, add_to_plan_time_dict
 from ..utils import merge_func
 from ..beamline import GLOBAL_BEAMLINE as bl
+from .plan_stubs import update_plan_status
 
 import bluesky.plans as bp
 from bluesky.plan_stubs import mv
@@ -119,6 +120,9 @@ def nbs_gscan(motor, start: float, *args, extra_dets=[], shift: float = 0, **kwa
     """
     points = _make_gscan_points(start, *args, shift=shift)
     # Move motor to start position first
+    yield from update_plan_status(
+        f"moving motor {motor.name} to start position {points[0]}"
+    )
     yield from mv(motor, points[0])
     return (yield from nbs_list_scan(motor, points, extra_dets=extra_dets, **kwargs))
 

@@ -1,6 +1,8 @@
 from bluesky.plan_stubs import open_run, close_run
 from bluesky.utils import RunEngineControlException, make_decorator
 from bluesky.preprocessors import contingency_wrapper
+from bluesky.preprocessors import plan_mutator, ensure_generator, single_gen
+from bluesky import Msg
 from functools import wraps
 from ..utils import merge_func
 from copy import deepcopy
@@ -99,3 +101,60 @@ def run_return_wrapper(plan, *, md: Optional[dict] = None):
 
 
 run_return_decorator = make_decorator(run_return_wrapper)
+
+
+def plan_status_decorator(func):
+    """
+    Update plan status, and clear after plan completion
+
+    Parameters
+    ----------
+    plan : iterable or iterator
+        a generator, list, or similar containing `Msg` objects
+    status : str
+        the status to update to
+
+    Yields
+    ------
+    msg : Msg
+        messages from plan with 'update_plan_status', and 'clear_plan_status' messages inserted
+
+    """
+
+    @merge_func(func)
+    def _inner(*args, md: Optional[dict] = None, **kwargs):
+        # Get plan name from metadata if available
+        md = md or {}
+        plan_name = md.get("plan_name", func.__name__) if md else func.__name__
+        status = "Running " + plan_name
+        print(f"Plan status decorator: {status}")
+        update_msgs = [Msg("update_plan_status", None, status)]
+        clear_msgs = [Msg("clear_plan_status")]
+
+        def insert_after_open(msg):
+            if msg.command == "open_run":
+
+                def new_gen():
+                    yield from ensure_generator(update_msgs)
+
+                return single_gen(msg), new_gen()
+            else:
+                return None, None
+
+        def insert_before_close(msg):
+            if msg.command == "close_run":
+
+                def new_gen():
+                    yield from ensure_generator(clear_msgs)
+                    yield msg
+
+                return new_gen(), None
+            else:
+                return None, None
+
+        # Apply nested mutations.
+        plan1 = plan_mutator(func(*args, md=md, **kwargs), insert_after_open)
+        plan2 = plan_mutator(plan1, insert_before_close)
+        return (yield from plan2)
+
+    return _inner

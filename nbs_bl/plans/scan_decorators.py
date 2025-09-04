@@ -6,11 +6,17 @@ from ..detectors import (
     activate_detector_set,
 )
 from ..utils import merge_func
-from .plan_stubs import set_exposure, sampleholder_set_sample, sampleholder_move_sample
+from .plan_stubs import (
+    set_exposure,
+    sampleholder_set_sample,
+    sampleholder_move_sample,
+    update_plan_status,
+    clear_plan_status,
+)
 from bluesky.plan_stubs import mv, trigger_and_read, declare_stream
 from bluesky.utils import separate_devices
 from bluesky.preprocessors import stage_wrapper, plan_mutator, set_run_key_wrapper
-from .preprocessors import wrap_metadata
+from .preprocessors import wrap_metadata, plan_status_decorator
 from .suspenders import dynamic_suspenders
 from .groups import repeat
 
@@ -19,6 +25,7 @@ from typing import Optional
 from importlib.metadata import entry_points
 from functools import reduce
 from datetime import datetime
+from bluesky_queueserver import parameter_annotation_decorator
 
 
 def wrap_scantype(scantype):
@@ -56,6 +63,7 @@ def _eref_setup(func):
         _md = {}
         blconf = GLOBAL_BEAMLINE.config.get("configuration", {})
         if eref_sample is not None and blconf.get("has_motorized_eref", False):
+            yield from update_plan_status("moving energy reference sample")
             yield from sampleholder_move_sample(
                 GLOBAL_BEAMLINE.reference_sampleholder, eref_sample
             )
@@ -85,6 +93,7 @@ def _sample_setup_with_move(func):
             be the default for the sampleholder (typically moving the sample into the beam at a typical angle)
         """
         if sample is not None:
+            yield from update_plan_status("moving_sample")
             yield from sampleholder_move_sample(
                 GLOBAL_BEAMLINE.primary_sampleholder, sample, **sample_position
             )
@@ -121,6 +130,7 @@ def _slit_setup(func):
             If not None, will set the beamline exit slit prior to the plan start.
         """
         if eslit is not None:
+            yield from update_plan_status("setting exit slit")
             yield from mv(GLOBAL_BEAMLINE.slits, eslit)
         return (yield from func(*args, **kwargs))
 
@@ -141,9 +151,14 @@ def _energy_setup(func):
         energy : float, optional
             If not None, will set the beamline energy prior to the plan start.
         """
+        print("Energy Setup Decorator")
+
         if energy is not None:
+            print("Setting up energy")
+            yield from update_plan_status("setting up energy")
             yield from mv(GLOBAL_BEAMLINE.energy, energy)
         if polarization is not None and hasattr(GLOBAL_BEAMLINE, "polarization"):
+            yield from update_plan_status("setting up polarization")
             yield from mv(GLOBAL_BEAMLINE.polarization, polarization)
         return (yield from func(*args, **kwargs))
 
@@ -203,6 +218,7 @@ def staged_baseline_wrapper(plan, devices, name="staged_baseline"):
 
 
 def _nbs_setup_detectors_with_baseline(func):
+    @parameter_annotation_decorator({"parameters": {"dwell": {"min": 0}}})
     @merge_func(func, ["detectors"])
     def _inner(*args, extra_dets=[], dwell: Optional[float] = None, **kwargs):
         """
@@ -251,6 +267,7 @@ def _nbs_setup_detectors_with_baseline(func):
 
 
 def _nbs_setup_detectors(func):
+    @parameter_annotation_decorator({"parameters": {"dwell": {"min": 0}}})
     @merge_func(func, ["detectors"])
     def _inner(*args, extra_dets=[], dwell: Optional[float] = None, **kwargs):
         """
@@ -353,6 +370,7 @@ def _nbs_add_comment(func):
 
 def nbs_base_scan_decorator(func):
     @repeat
+    @plan_status_decorator
     @_nbs_add_plan_args
     @_beamline_setup
     @_nbs_setup_detectors
