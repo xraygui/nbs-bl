@@ -2,7 +2,7 @@ import asyncio
 from bluesky import RunEngine
 from .beamline import GLOBAL_BEAMLINE
 from bluesky_queueserver import is_re_worker_active
-from .planStatus import GLOBAL_PLAN_STATUS
+from .queueserver import GLOBAL_PLAN_STATUS
 
 
 async def generic_cmd(msg):
