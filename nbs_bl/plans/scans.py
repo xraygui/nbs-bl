@@ -80,9 +80,7 @@ for _scan in [
     exclude_wrapper_args=False,
     use_func_name=False,
 )
-def nbs_gscan(
-    motor, start, stop, step, *args, extra_dets=[], shift: float = 0, **kwargs
-):
+def nbs_gscan(motor, start: float, *args, extra_dets=[], shift: float = 0, **kwargs):
     """A variable step scan of a motor and the default detectors.
 
     Other detectors may be added via extra_dets
@@ -93,20 +91,33 @@ def nbs_gscan(
         The motor object to scan
     start : float
         Starting position for the scan
-    stop : float
-        First stopping position
-    step : float
+    step : float, optional
         Step size for first region
-    stop2 : float, optional
-        Second stopping position. Additional stop/step pairs can be provided
+    stop : float, optional
+        First stopping position
     step2 : float, optional
         Step size for second region. Additional stop/step pairs can be provided
+    stop2 : float, optional
+        Second stopping position. Additional stop/step pairs can be provided
+    *args : float, optional
+        Additional stop/step pairs can be provided
     extra_dets : list
         A list of detectors to add for just this scan
     shift : float
         A value to shift all start/stop positions by
+
+    Examples
+    --------
+    # Scan from 270 to 280 in steps of 1
+    nbs_gscan(energy, 270, 1, 280)
+
+    # Scan from 270 to 280 in steps of 1, then from 280 to 290 in steps of 0.25
+    nbs_gscan(energy, 270, 1, 280, 0.25, 290)
+
+    # Scan with multiple regions of different step sizes
+    nbs_gscan(energy, 270, 1, 280, 0.5, 285, 0.1, 290)
     """
-    points = _make_gscan_points(start, stop, step, *args, shift=shift)
+    points = _make_gscan_points(start, *args, shift=shift)
     # Move motor to start position first
     yield from mv(motor, points[0])
     return (yield from nbs_list_scan(motor, points, extra_dets=extra_dets, **kwargs))
