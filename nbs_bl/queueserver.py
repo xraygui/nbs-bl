@@ -188,9 +188,6 @@ class GlobalStatusManager:
 
 # Create global instance
 GLOBAL_USER_STATUS = GlobalStatusManager()
-GLOBAL_PLAN_STATUS = GLOBAL_USER_STATUS.request_status_dict(
-    "PLAN_STATUS", use_redis=True
-)
 
 
 def request_update(key):

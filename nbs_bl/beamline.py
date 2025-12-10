@@ -1,21 +1,10 @@
 from bluesky.preprocessors import SupplementalData
 from .queueserver import GLOBAL_USER_STATUS
 from .status import StatusDict
-from .hw import HardwareGroup, DetectorGroup, loadFromConfig
-from nbs_core.autoload import instantiateOphyd, _find_deferred_devices, getMaxLoadPass
-from os.path import join, exists
+from .hw import HardwareGroup, DetectorGroup, loadDevices
+from nbs_core.autoload import instantiateOphyd, _find_deferred_devices
+
 import IPython
-
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
-
-
-_default_settings = {
-    "device_filename": "devices.toml",
-    "beamline_filename": "beamline.toml",
-}
 
 
 class BeamlineModel:
@@ -60,140 +49,49 @@ class BeamlineModel:
 
     def __init__(self, *args, **kwargs):
         """
-        Creates an empty BeamlineModel, need to load_devices after init
+        Creates an empty BeamlineModel.
+
+        The model is a pure data structure. Use BeamlineInitializer
+        to initialize it from configuration files.
         """
-        self.supplemental_data = SupplementalData()
-        self.md = {}
-        self.RE = None
-        self.settings = StatusDict()
-        self.devices = StatusDict()
-        self.energy = None
-        self.primary_sampleholder = None
-        self.default_shutter = None
-        self.config = {}
-        self.groups = list(self.default_groups)
-        self.roles = list(self.default_roles)
-        self.detectors = DetectorGroup("detectors")
-        self.motors = HardwareGroup("motors")
 
-        # Storage for deferred devices
-        self._deferred_config = {}
-        self._deferred_devices = set()
+        self.reset()
 
-        # Initialize empty dictionaries for each default group
-        for group in self.default_groups:
-            if not hasattr(self, group):
-                setattr(self, group, HardwareGroup(group))
-
-        for role in self.default_roles:
-            if not hasattr(self, role):
-                setattr(self, role, None)
-
-    def load_settings(self, settings_file):
+    def add_device(self, device_name, device_info):
         """
-        Load settings from a TOML file.
+        Add a device to the beamline model.
 
         Parameters
         ----------
-        settings_file : str
-            The path to the settings file.
+        device_name : str
+            Name of the device
+        device_info : dict
+            Dictionary containing the following keys:
+            - device: The device object
+            - loaded: Whether the device is loaded
+            - groups: List of groups the device is in
+            - roles: List of roles the device is in
         """
-        settings_dict = {}
-        settings_dict.update(_default_settings)
 
-        if not exists(settings_file):
-            print("No settings found, using defaults")
-            config = {}
-        else:
-            with open(settings_file, "rb") as f:
-                config = tomllib.load(f)
-        settings_dict.update(config.get("settings", {}))
-        self.settings.update(settings_dict)
-        print(f"Loading Settings {self.settings}")
+        self._add_device_to_modes(device_name, device_info)
+        if not device_info["loaded"]:
+            self._deferred_devices.add(device_name)
+            self._deferred_config[device_name] = device_info["config"]
+            return
 
-    def load_configuration(self, startup_dir):
-        """
-        Load and merge configuration files.
+        self.devices[device_name] = device_info["device"]
+        self._add_device_to_groups(device_name, device_info)
+        self._set_device_roles(device_name, device_info)
 
-        Parameters
-        ----------
-        startup_dir : str
-            Directory containing configuration files
+    def _add_device_to_modes(self, device_name, device_info):
+        modes = device_info["config"].get("_modes", [])
+        for mode in modes:
+            if mode in self.modes:
+                self.modes[mode].append(device_name)
+            else:
+                self.modes[mode] = [device_name]
 
-        Returns
-        -------
-        dict
-            Device configuration dictionary
-        """
-        object_file = join(startup_dir, self.settings["device_filename"])
-        beamline_file = join(startup_dir, self.settings["beamline_filename"])
-
-        with open(beamline_file, "rb") as f:
-            beamline_config = tomllib.load(f)
-
-        with open(object_file, "rb") as f:
-            object_config = tomllib.load(f)
-
-        # Store merged configuration
-        self.config.update(beamline_config)
-        self.config["devices"] = object_config
-
-        # Handle Redis settings
-        self.load_redis()
-        self.load_md()
-        tmp_settings = GLOBAL_USER_STATUS.request_status_dict(
-            "SETTINGS", use_redis=True
-        )
-        tmp_settings.update(self.settings)
-        self.settings = tmp_settings
-        print(f"Settings from Redis: {self.settings}")
-
-        return object_config
-
-    def load_beamline(self, startup_dir, ns=None):
-        """
-        Load and configure the beamline from the startup directory.
-
-        Parameters
-        ----------
-        startup_dir : str
-            Directory containing configuration files
-        ns : dict, optional
-            Namespace for loading devices
-        """
-        # Phase 1: Load settings
-        settings_file = join(startup_dir, "beamline.toml")
-        self.load_settings(settings_file)
-        self.settings["startup_dir"] = startup_dir
-
-        # Phase 2: Load and merge configurations
-        object_config = self.load_configuration(startup_dir)
-
-        # Phase 3: Load and register devices
-        self.load_devices(object_config, ns)
-
-    def register_devices(self, devices, groups, roles):
-        """
-        Handle device registration and grouping.
-
-        Parameters
-        ----------
-        devices : dict
-            Dictionary of instantiated devices
-        groups : dict
-            Dictionary mapping group names to lists of device names
-        roles : dict
-            Dictionary mapping role names to device names
-        """
-        self.devices.update(devices)
-
-        for groupname, devicelist in groups.items():
-            self._configure_group(groupname, devicelist)
-
-        for role, key in roles.items():
-            self._configure_role(role, key)
-
-    def _configure_role(self, role, key):
+    def _set_device_roles(self, device_name, device_info):
         """
         Handle role assignment and special device setup.
 
@@ -204,15 +102,17 @@ class BeamlineModel:
         key : str
             Device key to assign to the role
         """
-        if role in self.reserved:
-            raise KeyError(f"Key {role} is reserved, use a different role name")
-        if role != "":
-            if role not in self.roles:
-                self.roles.append(role)
-            print(f"Setting {role} to {key}")
-            setattr(self, role, self.devices[key])
+        roles = device_info["roles"]
+        for role in roles:
+            if role in self.reserved:
+                raise KeyError(f"Key {role} is reserved, use a different role name")
+            if role != "":
+                if role not in self.roles:
+                    self.roles.append(role)
+                print(f"Setting {role} to {device_name}")
+                setattr(self, role, self.devices[device_name])
 
-    def handle_special_devices(self, roles):
+    def handle_special_devices(self):
         """
         Handle special device setup, particularly sampleholders.
 
@@ -221,14 +121,13 @@ class BeamlineModel:
         roles : dict
             Dictionary mapping role names to device names
         """
-        if "primary_sampleholder" in roles:
-            self._setup_sampleholder(
-                self.primary_sampleholder,
-                "GLOBAL_SAMPLES",
-                "GLOBAL_SELECTED",
-                is_primary=True,
-            )
-        if "reference_sampleholder" in roles:
+        self._setup_sampleholder(
+            self.primary_sampleholder,
+            "GLOBAL_SAMPLES",
+            "GLOBAL_SELECTED",
+            is_primary=True,
+        )
+        if "reference_sampleholder" in self.roles:
             self._setup_sampleholder(
                 self.reference_sampleholder,
                 "REFERENCE_SAMPLES",
@@ -251,6 +150,9 @@ class BeamlineModel:
         is_primary : bool, optional
             Whether this is the primary sampleholder
         """
+        if holder is None:
+            return
+        
         tmp_samples = GLOBAL_USER_STATUS.request_status_dict(
             samples_key, use_redis=True
         )
@@ -272,41 +174,36 @@ class BeamlineModel:
         except Exception as e:
             print(f"Error reloading sample frames for primary sampleholder: {e}")
 
-    def load_devices(self, config, ns=None, load_pass=None):
-        """
-        Load and register devices from configuration.
+    def activate_mode(self, modes):
+        if not isinstance(modes, (list, tuple)):
+            modes = [modes]
+        all_devices = set(self.devices.keys())
+        devices_to_defer = set()
+        devices_to_load = set()
+        for mode, mode_devices in self.modes.items():
+            if mode in modes:
+                devices_to_load.update(mode_devices)
+            else:
+                devices_to_defer.update(mode_devices)
+        devices_to_defer.difference_update(devices_to_load)
+        devices_to_defer &= all_devices
+        devices_to_load.difference_update(all_devices)
 
-        Parameters
-        ----------
-        config : dict
-            Device configuration dictionary
-        ns : dict, optional
-            Namespace for loading devices
-        """
-        if load_pass is None:
-            max_load_pass = getMaxLoadPass(config)
-            for pass_num in range(1, max_load_pass + 1):
-                self.load_devices(config, ns, load_pass=pass_num)
-        # Find deferred devices for tracking
-        _, _, deferred_config = _find_deferred_devices(config)
+        for device_name in devices_to_defer:
+            self.defer_device(device_name)
+        for device_name in devices_to_load:
+            self.load_deferred_device(device_name)
 
-        # Load non-deferred devices
-        devices, groups, roles = loadFromConfig(
-            config, instantiateOphyd, alias=True, namespace=ns, load_pass=load_pass
-        )
-
-        # Update deferred device tracking
-        if deferred_config:
-            self._deferred_config.update(deferred_config)
-            self._deferred_devices.update(deferred_config.keys())
-        # Remove loaded devices from deferred tracking
-        for device_name in devices:
-            self._deferred_config.pop(device_name, None)
-            self._deferred_devices.discard(device_name)
-
-        # Register devices and handle special cases
-        self.register_devices(devices, groups, roles)
-        self.handle_special_devices(roles)
+    def deactivate_mode(self, modes):
+        if not isinstance(modes, (list, tuple)):
+            modes = [modes]
+        devices_to_defer = set()
+        for mode in modes:
+            if mode in self.modes:
+                for device_name in self.modes[mode]:
+                    devices_to_defer.add(device_name)
+        for device_name in devices_to_defer:
+            self.defer_device(device_name)
 
     def load_deferred_device(self, device_name, ns=None):
         """
@@ -344,43 +241,22 @@ class BeamlineModel:
         self._deferred_config[device_name]["_defer_loading"] = False
 
         try:
-            # Load the device using the main loading function
-            self.load_devices(self._deferred_config, ns)
+            devices = loadDevices(
+                self._deferred_config,
+                namespace=ns,
+                mode=None,
+            )
+            for device_name, device_info in devices.items():
+                self.add_device(device_name, device_info)
+
+            for device_name in devices:
+                self._deferred_config.pop(device_name, None)
+                self._deferred_devices.discard(device_name)
 
             return self.devices.get(device_name)
         except Exception as e:
             raise RuntimeError(f"Failed to load device {device_name}: {e}") from e
 
-    def load_redis(self):
-        redis_settings = (
-            self.config.get("settings", {}).get("redis", {}).get("info", {})
-        )
-        self.redis_settings = redis_settings
-        if redis_settings:
-            GLOBAL_USER_STATUS.init_redis(
-                host=redis_settings["host"],
-                port=redis_settings.get("port", None),
-                db=redis_settings.get("db", 0),
-                global_prefix=redis_settings.get("prefix", ""),
-            )
-
-    def load_md(self):
-        redis_md_settings = (
-            self.config.get("settings", {}).get("redis", {}).get("md", {})
-        )
-        if redis_md_settings:
-            import redis
-            from nbs_bl.status import RedisStatusDict
-
-            mdredis = redis.Redis(
-                redis_md_settings["host"],
-                port=redis_md_settings.get("port", 6379),
-                db=redis_md_settings.get("db", 0),
-            )
-            self.md = RedisStatusDict(
-                mdredis, prefix=redis_md_settings.get("prefix", "")
-            )
-            GLOBAL_USER_STATUS.add_status("USER_MD", self.md)
 
     def get_device(self, device_name, get_subdevice=True):
         """
@@ -405,28 +281,17 @@ class BeamlineModel:
         if device not in self.supplemental_data.baseline:
             self.supplemental_data.baseline.append(device)
 
-    def _configure_group(self, groupname, devicelist):
-        if groupname in self.reserved:
-            raise KeyError(f"Key {groupname} is reserved, use a different group name")
-
-        configuration = self.config.get("configuration", {})
-        all_device_config = self.config.get("devices", {})
-        group_baseline = groupname in configuration.get("baseline", [])
-
-        if groupname not in self.groups:
-            self.groups.append(groupname)
-            setattr(self, groupname, HardwareGroup(groupname))
-        group = getattr(self, groupname)
-        for key in devicelist:
-            device_config = all_device_config.get(key, {})
-            print(f"Setting {groupname}[{key}]")
-            device = self.devices[key]
-            group.add(key, device, **device_config)
-            should_add_to_baseline = all_device_config.get(key, {}).get(
-                "_baseline", group_baseline
-            )
-            if should_add_to_baseline:
-                self.add_to_baseline(key, False)
+    def _add_device_to_groups(self, device_key, device_info):
+        groups = device_info["groups"]
+        for groupname in groups:
+            if groupname in self.reserved:
+                raise KeyError(f"Key {groupname} is reserved, use a different group name")
+            if groupname not in self.groups:
+                self.groups.append(groupname)
+                setattr(self, groupname, HardwareGroup(groupname))
+            group = getattr(self, groupname)
+            group.add(device_key, device_info["device"], **device_info["config"])
+            print(f"Setting {groupname}[{device_key}]")
 
     def get_deferred_devices(self):
         """Return set of currently deferred devices."""
@@ -510,5 +375,72 @@ class BeamlineModel:
         """Allow dictionary-like setting of devices."""
         self.devices[key] = value
 
+    def reset(self):
+        """
+        Reset the beamline model to an uninitialized state.
+
+        Clears all devices, configuration, settings, and other initialized
+        data while preserving the structure. Useful for debugging and testing.
+        """
+        
+        self.initialized = False
+        self.supplemental_data = SupplementalData()
+        self.md = {}
+        self.RE = None
+        self.settings = StatusDict()
+        self.devices = StatusDict()
+        self.config = {}
+        self.plan_status = {}
+        self._deferred_config = {}
+        self._deferred_devices = set()
+
+        self.groups = list(self.default_groups)
+        self.roles = list(self.default_roles)
+
+        self.modes = {}
+
+        for group in self.default_groups:
+            setattr(self, group, HardwareGroup(group))
+
+        for role in self.default_roles:
+            setattr(self, role, None)
+
+        self.detectors = DetectorGroup("detectors")
+        self.motors = HardwareGroup("motors")
+
+        if hasattr(self, "samples"):
+            delattr(self, "samples")
+        if hasattr(self, "current_sample"):
+            delattr(self, "current_sample")
+        if hasattr(self, "redis_settings"):
+            delattr(self, "redis_settings")
+
+
+    def reset_old(self):
+        self.supplemental_data = SupplementalData()
+        self.md = {}
+        self.RE = None
+        self.settings = StatusDict()
+        self.devices = StatusDict()
+        self.energy = None
+        self.primary_sampleholder = None
+        self.default_shutter = None
+        self.config = {}
+        self.groups = list(self.default_groups)
+        self.roles = list(self.default_roles)
+        self.detectors = DetectorGroup("detectors")
+        self.motors = HardwareGroup("motors")
+        self.plan_status = {}
+
+        self._deferred_config = {}
+        self._deferred_devices = set()
+
+        for group in self.default_groups:
+            if not hasattr(self, group):
+                setattr(self, group, HardwareGroup(group))
+
+        for role in self.default_roles:
+            if not hasattr(self, role):
+                setattr(self, role, None)
 
 GLOBAL_BEAMLINE = BeamlineModel()

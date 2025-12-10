@@ -2,7 +2,6 @@ import asyncio
 from bluesky import RunEngine
 from .beamline import GLOBAL_BEAMLINE
 from bluesky_queueserver import is_re_worker_active
-from .queueserver import GLOBAL_PLAN_STATUS
 
 
 async def generic_cmd(msg):
@@ -31,7 +30,7 @@ async def _update_plan_status(msg):
     Update the plan status
     """
     command, obj, args, kwargs, _ = msg
-    GLOBAL_PLAN_STATUS["status"] = args[0]
+    GLOBAL_BEAMLINE.plan_status["status"] = args[0]
 
 
 async def _clear_plan_status(msg):
@@ -39,7 +38,7 @@ async def _clear_plan_status(msg):
     Clear the plan status
     """
     command, obj, args, kwargs, _ = msg
-    GLOBAL_PLAN_STATUS["status"] = "idle"
+    GLOBAL_BEAMLINE.plan_status["status"] = "idle"
 
 
 def load_RE_commands(engine):
