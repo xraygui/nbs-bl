@@ -162,6 +162,9 @@ class GlobalStatusManager:
 
         return self._status_dict[global_dict_key]
 
+    def keys(self):
+        return self._status_dict.keys()
+
     def __getitem__(self, key):
         return self._status_dict[key]
 

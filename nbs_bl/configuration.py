@@ -258,6 +258,7 @@ class InitializeMetadataStep(InitializationStep):
         if redis_md_settings:
             import redis
             from nbs_bl.status import RedisStatusDict
+            from nbs_bl.redisDevice import _RedisSignal
 
             mdredis = redis.Redis(
                 redis_md_settings["host"],
@@ -268,8 +269,10 @@ class InitializeMetadataStep(InitializationStep):
                 mdredis, prefix=redis_md_settings.get("prefix", "")
             )
             GLOBAL_USER_STATUS.add_status("USER_MD", beamline.md)
+            _RedisSignal.set_default_status_provider(GLOBAL_USER_STATUS)
         else:
             beamline.md = GLOBAL_USER_STATUS.request_status_dict("USER_MD")
+            _RedisSignal.set_default_status_provider(GLOBAL_USER_STATUS)
 
         context["namespace"].update({"md": beamline.md})
 
