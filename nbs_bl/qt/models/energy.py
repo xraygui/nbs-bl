@@ -34,3 +34,20 @@ class EnergyModel:
         for key, value in kwargs.items():
             setattr(self, key, value)
         print("Done Initializing Energy")
+
+    def iter_models(self):
+        """
+        Yield contained energy-related models for traversal.
+
+        Yields
+        ------
+        BaseModel
+            Contained models.
+        """
+        yield from (
+            self.energy,
+            self.grating_motor,
+            self.cff,
+        )
+        for motor in self.real_motors:
+            yield motor

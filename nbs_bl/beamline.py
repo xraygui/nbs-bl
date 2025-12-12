@@ -72,7 +72,7 @@ class BeamlineModel:
             - groups: List of groups the device is in
             - roles: List of roles the device is in
         """
-
+        # print(f"Adding device {device_name} to beamline model: {device_info}")
         self._add_device_to_modes(device_name, device_info)
         if not device_info["loaded"]:
             self._deferred_devices.add(device_name)
@@ -283,6 +283,7 @@ class BeamlineModel:
 
     def _add_device_to_groups(self, device_key, device_info):
         groups = device_info["groups"]
+        # print(f"Adding device {device_key} to groups: {groups}")
         for groupname in groups:
             if groupname in self.reserved:
                 raise KeyError(f"Key {groupname} is reserved, use a different group name")
@@ -291,7 +292,7 @@ class BeamlineModel:
                 setattr(self, groupname, HardwareGroup(groupname))
             group = getattr(self, groupname)
             group.add(device_key, device_info["device"], **device_info["config"])
-            print(f"Setting {groupname}[{device_key}]")
+            # print(f"Setting {groupname}[{device_key}]")
 
     def get_deferred_devices(self):
         """Return set of currently deferred devices."""

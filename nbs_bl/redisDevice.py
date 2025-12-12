@@ -23,9 +23,13 @@ class _RedisSignal(Signal):
     def set_default_status_provider(cls, provider):
         cls.default_status_provider = provider
 
-    def __init__(self, *, dict_name, default=None, **kwargs):
+    def __init__(self, *, dict_name=None, default=None, **kwargs):
         super().__init__(**kwargs)
-        self._dict_name = dict_name
+        parent_prefix = getattr(self.parent, "prefix", None)
+        resolved_dict = dict_name or parent_prefix
+        if not resolved_dict:
+            raise ValueError("RedisSignal requires a dict_name or parent prefix")
+        self._dict_name = resolved_dict
         self._key = self.name
         self._default = default
         provider = self._status_provider()
@@ -71,15 +75,22 @@ def RedisDevice(prefix, name="", keys=None, status_provider=None, **kwargs):
 
     attrs = {
         "_keys_config": keys,
-        "_dict_name": prefix,
+        "_dict_name": None,
         "_status_provider": status_provider or _RedisSignal.default_status_provider,
     }
     for key, default in keys.items():
-        attrs[key] = Cpt(_RedisSignal, name=key, dict_name=prefix, default=default)
+        attrs[key] = Cpt(_RedisSignal, name=key, default=default)
 
     cls = type(f"RedisDevice_{name}", (Device,), attrs)
-    obj = cls(prefix="", name=name, **kwargs)
+    obj = cls(prefix=prefix, name=name, **kwargs)
 
 
     return obj
 
+class RedisModeDevice(Device):
+
+    mode = Cpt(_RedisSignal, name="mode", default="default")
+
+    def __init__(self, prefix, name="", status_provider=None, **kwargs):
+        super().__init__(prefix=prefix, name=name, **kwargs)
+        self._status_provider = status_provider

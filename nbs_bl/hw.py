@@ -33,11 +33,13 @@ def loadDevices(device_config, namespace=None, mode=None):
         for device_name in devices:
             deferred_config.pop(device_name, None)
             deferred_devices.discard(device_name)
-
+        for group, group_devices in groups.items():
+            if group in all_groups:
+                all_groups[group] = all_groups[group] + group_devices
+            else:
+                all_groups[group] = group_devices
         all_devices.update(devices)
-        all_groups.update(groups)
         all_roles.update(roles)
-
     device_dict = {key: {"device": device, "loaded": True, "groups": [], "roles": [], "config": device_config.get(key, {})} for key, device in all_devices.items()}
     for group, group_devices in all_groups.items():
         for device in group_devices:
