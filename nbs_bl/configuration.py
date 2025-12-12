@@ -310,6 +310,7 @@ class LoadDevicesStep(InitializationStep):
 
     def execute(self, beamline: BeamlineModel, context: dict) -> dict:
         device_config = beamline.config["devices"]
+        beamline._initialize_groups()
         ns = context.get("namespace")
         # Move all of this to a helper function in hw.py
         devices = loadDevices(device_config, ns, mode="default")

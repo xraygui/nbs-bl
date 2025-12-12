@@ -399,7 +399,15 @@ class BeamlineModel:
         self.roles = list(self.default_roles)
 
         self.modes = {}
+        if hasattr(self, "samples"):
+            delattr(self, "samples")
+        if hasattr(self, "current_sample"):
+            delattr(self, "current_sample")
+        if hasattr(self, "redis_settings"):
+            delattr(self, "redis_settings")
 
+
+    def _initialize_groups(self):
         for group in self.default_groups:
             setattr(self, group, HardwareGroup(group))
 
@@ -409,12 +417,6 @@ class BeamlineModel:
         self.detectors = DetectorGroup("detectors")
         self.motors = HardwareGroup("motors")
 
-        if hasattr(self, "samples"):
-            delattr(self, "samples")
-        if hasattr(self, "current_sample"):
-            delattr(self, "current_sample")
-        if hasattr(self, "redis_settings"):
-            delattr(self, "redis_settings")
 
 
     def reset_old(self):
