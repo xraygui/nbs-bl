@@ -4,7 +4,6 @@ from importlib.metadata import entry_points
 from .beamline import GLOBAL_BEAMLINE, BeamlineModel
 from .queueserver import request_update, get_status, GLOBAL_USER_STATUS
 from .run_engine import create_run_engine
-from nbs_bl.help import GLOBAL_IMPORT_DICTIONARY
 from .hw import loadDevices
 from abc import ABC, abstractmethod
 from os.path import join, exists
@@ -454,6 +453,8 @@ class InitializeGlobalNamespaceStep(InitializationStep):
         return [InitializeRunEngineStep]
 
     def execute(self, beamline: BeamlineModel, context: dict) -> dict:
+        from nbs_bl.help import GLOBAL_IMPORT_DICTIONARY
+
         for key in GLOBAL_IMPORT_DICTIONARY:
             if key not in context["namespace"]:
                 context["namespace"][key] = GLOBAL_IMPORT_DICTIONARY[key]

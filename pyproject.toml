@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "nbs-bl"
@@ -8,21 +8,48 @@ authors = [
     {name = "Charles Titus", email = "ctitus@bnl.gov"},
 ]
 description = "Beamline Framework"
-dynamic = ["version", "dependencies"]
+requires-python = ">=3.9"
+dynamic = ["version"]
+readme = "README.md"
+keywords = ["bluesky", "nsls-ii", "beamline"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: Public Domain",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research"
+]
+dependencies = ["bluesky",
+    "bluesky-queueserver",
+    "databroker>=2.0.0b67",
+    "ophyd",
+    "numpy",
+    "ipython",
+    "redis_json_dict",
+    "numpydoc",
+    "nbs-core>=0.1",
+    'tomli ; python_version < "3.11"']
 
 [project.urls]
 homepage = "https://github.com/xraygui/nbs-bl"
 
-[tool.setuptools]
-packages = ["nbs_bl"]
-
-[tool.setuptools_scm]
-
-[tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
+[tool.hatch.version]
+source = "vcs"
 
 [project.entry-points."nbs_bl.plan_loaders"]
 xas = "nbs_bl.plans.xas:load_xas"
 
 [project.scripts]
 modify-regions = "nbs_bl.tests.modify_regions:main"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.feature.build.dependencies]
+hatch = "*"
+
+[tool.pixi.feature.build.tasks]
+build = "hatch build"
+
+[tool.pixi.environments]
+build = { features = ["build"], solve-group = "default" }

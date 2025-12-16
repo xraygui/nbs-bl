@@ -88,7 +88,7 @@ class GlobalStatusManager:
             if self._redis_client is None:
                 import warnings
 
-                warnings.warn("Redis not initialized. Using plain StatusDict instead.")
+                warnings.warn(f"Redis not initialized. Using plain StatusDict for {key} instead.")
                 status_dict = StatusDict()
             else:
                 # Construct the full prefix
@@ -127,7 +127,7 @@ class GlobalStatusManager:
             if self._redis_client is None:
                 import warnings
 
-                warnings.warn("Redis not initialized. Using plain StatusList instead.")
+                warnings.warn(f"Redis not initialized. Using plain StatusList for {key} instead.")
                 status_list = StatusList()
             else:
                 # Create or get the Redis dict with only global prefix

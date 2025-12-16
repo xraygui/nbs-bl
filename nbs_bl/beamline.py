@@ -54,7 +54,7 @@ class BeamlineModel:
         The model is a pure data structure. Use BeamlineInitializer
         to initialize it from configuration files.
         """
-
+        print("Initializing beamline model")
         self.reset()
 
     def add_device(self, device_name, device_info):
@@ -408,6 +408,7 @@ class BeamlineModel:
 
 
     def _initialize_groups(self):
+        print("Initializing groups")
         for group in self.default_groups:
             setattr(self, group, HardwareGroup(group))
 
