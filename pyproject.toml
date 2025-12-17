@@ -7,8 +7,8 @@ name = "nbs-bl"
 authors = [
     {name = "Charles Titus", email = "ctitus@bnl.gov"},
 ]
-description = "Beamline Framework"
 requires-python = ">=3.9"
+description = "NBS Beamline Framework"
 dynamic = ["version"]
 readme = "README.md"
 keywords = ["bluesky", "nsls-ii", "beamline"]
