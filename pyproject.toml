@@ -38,9 +38,6 @@ source = "vcs"
 [project.entry-points."nbs_bl.plan_loaders"]
 xas = "nbs_bl.plans.xas:load_xas"
 
-[project.scripts]
-modify-regions = "nbs_bl.tests.modify_regions:main"
-
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64"]
