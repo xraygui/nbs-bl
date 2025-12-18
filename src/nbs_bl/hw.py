@@ -1,7 +1,63 @@
 from .queueserver import GLOBAL_USER_STATUS
 from .printing import boxed_text
 from nbs_core.autoload import loadFromConfig as _loadFromConfig
+from nbs_core.autoload import instantiateOphyd, _find_deferred_devices, getMaxLoadPass
 
+
+def loadDevices(device_config, namespace=None, mode=None):
+    max_load_pass = getMaxLoadPass(device_config)
+
+    all_devices = {}
+    all_groups = {}
+    all_roles = {}
+    deferred_config = {}
+    deferred_devices = set()
+    for pass_num in range(1, max_load_pass + 1):
+        print(f"    Load pass {pass_num}/{max_load_pass}")
+
+        _, _, _deferred_config = _find_deferred_devices(device_config, mode=mode)
+
+        devices, groups, roles = loadFromConfig(
+            device_config,
+            instantiateOphyd,
+            alias=True,
+            namespace=namespace,
+            load_pass=pass_num,
+            mode=mode,
+        )
+
+
+        deferred_config.update(_deferred_config)
+        deferred_devices.update(_deferred_config.keys())
+
+        for device_name in devices:
+            deferred_config.pop(device_name, None)
+            deferred_devices.discard(device_name)
+        for group, group_devices in groups.items():
+            if group in all_groups:
+                all_groups[group] = all_groups[group] + group_devices
+            else:
+                all_groups[group] = group_devices
+        all_devices.update(devices)
+        all_roles.update(roles)
+    device_dict = {key: {"device": device, "loaded": True, "groups": [], "roles": [], "config": device_config.get(key, {})} for key, device in all_devices.items()}
+    for group, group_devices in all_groups.items():
+        for device in group_devices:
+            if device in device_dict:
+                device_dict[device]["groups"].append(group)
+            else:
+                device_dict[device] = {"device": None, "groups": [group], "loaded": False, "roles": [], "config": device_config.get(device, {})}
+    
+    for role, device in all_roles.items():
+        if device in device_dict:
+            device_dict[device]["roles"].append(role)
+        else:
+            device_dict[device] = {"device": None, "roles": [role], "loaded": False, "groups": [], "config": device_config.get(device, {})}
+    for device_name, dconf in deferred_config.items():
+        dinfo = {"loaded": False, "config": dconf}
+        device_dict[device_name] = dinfo
+
+    return device_dict
 
 def loadFromConfig(
     config,
@@ -10,9 +66,10 @@ def loadFromConfig(
     namespace=None,
     load_pass="auto",
     filter_deferred=True,
+    mode=None,
 ):
     devices, groups, roles = _loadFromConfig(
-        config, instantiateDevice, alias, namespace, load_pass, filter_deferred
+        config, instantiateDevice, alias, namespace, load_pass, filter_deferred, mode=mode
     )
     for key, device in devices.items():
         globals()[key] = device
