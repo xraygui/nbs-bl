@@ -230,7 +230,8 @@ class BeamlineModel:
             If loading the device fails
         """
         if device_name not in self._deferred_devices:
-            raise KeyError(f"Device {device_name} is not in deferred devices")
+            print(f"Device {device_name} is not in deferred devices")
+            return
 
         # If it's an alias, get and load the root device
         config = self._deferred_config.get(device_name, {})
