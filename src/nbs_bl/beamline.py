@@ -20,6 +20,7 @@ class BeamlineModel:
         "mirrors",
         "controllers",
         "vacuum",
+        "source",
         "misc",
     ]
 
@@ -31,6 +32,7 @@ class BeamlineModel:
         "intensity_detector",
         "primary_sampleholder",
         "reference_sampleholder",
+        "mode",
         "slits",
     ]
 
