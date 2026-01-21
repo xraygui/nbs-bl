@@ -192,6 +192,7 @@ class BeamlineModel:
         for device_name in devices_to_defer:
             self.defer_device(device_name)
         for device_name in devices_to_load:
+            print(f"Loading deferred device {device_name}")
             self.load_deferred_device(device_name)
 
     def deactivate_mode(self, modes):
@@ -228,7 +229,7 @@ class BeamlineModel:
             If loading the device fails
         """
         if device_name not in self._deferred_devices:
-            raise KeyError(f"Device {device_name} is not in deferred devices")
+            print(f"Device {device_name} is not in deferred devices")
 
         # If it's an alias, get and load the root device
         config = self._deferred_config.get(device_name, {})
@@ -239,7 +240,7 @@ class BeamlineModel:
 
         # Create config with just this device and its dependencies
         self._deferred_config[device_name]["_defer_loading"] = False
-
+        
         try:
             devices = loadDevices(
                 self._deferred_config,
@@ -247,11 +248,12 @@ class BeamlineModel:
                 mode=None,
             )
             for device_name, device_info in devices.items():
-                self.add_device(device_name, device_info)
+                if device_info.get("loaded", False):
+                    print(f"Adding {device_name}")
+                    self.add_device(device_name, device_info)
 
-            for device_name in devices:
-                self._deferred_config.pop(device_name, None)
-                self._deferred_devices.discard(device_name)
+                    self._deferred_config.pop(device_name, None)
+                    self._deferred_devices.discard(device_name)
 
             return self.devices.get(device_name)
         except Exception as e:
