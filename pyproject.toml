@@ -20,6 +20,7 @@ classifiers = [
 ]
 dependencies = ["bluesky",
     "bluesky-queueserver",
+    "bluesky-live",
     "databroker>=2.0.0b67",
     "ophyd",
     "numpy",
@@ -60,7 +61,6 @@ pyqt = "*"
 
 [tool.pixi.feature.gui.tasks]
 config-editor = "nbs-bl-config-editor"
-roundtrip-devices = "python -c \"from nbs_bl.qt.models.config_model import ConfigModel; m=ConfigModel(); m.load_from_file('/home/jamie/work/xraygui/ucal-pods/src/ucal_pods/config/ipython/profile_default/startup/devices.toml'); txt=m.dumps(); import tempfile, pathlib; p=pathlib.Path(tempfile.gettempdir())/'devices_roundtrip.toml'; p.write_text(txt, encoding='utf-8'); m2=ConfigModel(); m2.load_from_file(p); assert set(m.devices.keys())==set(m2.devices.keys()); print('roundtrip_ok', len(m.devices))\""
 
 [tool.pixi.environments]
 build = { features = ["build"], solve-group = "default" }

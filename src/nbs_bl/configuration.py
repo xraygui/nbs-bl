@@ -50,8 +50,7 @@ def load_and_configure_everything(startup_dir=None, initializer=None):
     ip.user_ns["request_update"] = request_update
 
     if initializer is None:
-        initializer = BeamlineInitializer(GLOBAL_BEAMLINE)
-        ip.user_ns["beamline_initializer"] = initializer
+        initializer = get_default_initializer()
     initializer.initialize(startup_dir, ip.user_ns)
 
 
