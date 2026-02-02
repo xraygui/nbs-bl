@@ -120,4 +120,4 @@ def load_xas(filename):
                 user_ns[key] = xas_func
 
     # Return the generated plans dictionary in case it's needed
-    return generated_plans
+    return list(generated_plans.keys())
