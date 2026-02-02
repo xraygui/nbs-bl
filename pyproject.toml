@@ -20,6 +20,7 @@ classifiers = [
 ]
 dependencies = ["bluesky",
     "bluesky-queueserver",
+    "bluesky-live",
     "databroker>=2.0.0b67",
     "ophyd",
     "numpy",
@@ -38,9 +39,15 @@ source = "vcs"
 [project.entry-points."nbs_bl.plan_loaders"]
 xas = "nbs_bl.plans.xas:load_xas"
 
+[project.scripts]
+nbs-bl-config-editor = "nbs_bl.qt.widgets.config_editor:main"
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64"]
+
+[tool.pixi.pypi-dependencies]
+nbs-bl = { path = ".", editable = true }
 
 [tool.pixi.feature.build.dependencies]
 hatch = "*"
@@ -48,5 +55,13 @@ hatch = "*"
 [tool.pixi.feature.build.tasks]
 build = "hatch build"
 
+[tool.pixi.feature.gui.dependencies]
+qtpy = "*"
+pyqt = "*"
+
+[tool.pixi.feature.gui.tasks]
+config-editor = "nbs-bl-config-editor"
+
 [tool.pixi.environments]
 build = { features = ["build"], solve-group = "default" }
+gui = { features = ["gui"], solve-group = "default" }
