@@ -442,7 +442,7 @@ Other detectors may be added on the fly via extra_dets
     return _inner
 
 
-def get_decorator_entrypoints():
+def get_decorator_entrypoints(group="nbs_bl.plan_decorators"):
     """
     Get decorator entrypoints from beamline configuration.
 
@@ -460,7 +460,7 @@ def get_decorator_entrypoints():
         for ep_name in decorator_entrypoints:
             try:
                 # Look for entrypoint in nbs_bl.plan_decorators group
-                matches = eps.select(group="nbs_bl.plan_decorators", name=ep_name)
+                matches = eps.select(group=group, name=ep_name)
                 for match in matches:
                     decorator = match.load()
                     decorators.append(decorator)
@@ -468,6 +468,7 @@ def get_decorator_entrypoints():
                 print(f"Failed to load decorator {ep_name}: {e}")
 
     return decorators
+
 
 
 def dynamic_scan_wrapper(func, func_name=None):
@@ -493,10 +494,11 @@ def dynamic_scan_wrapper(func, func_name=None):
     ]
 
     # Get additional decorators from entrypoints
-    additional_decorators = get_decorator_entrypoints()
+    outer_decorators = get_decorator_entrypoints(group="nbs_bl.plan_decorators")
+    inner_decorators = get_decorator_entrypoints(group="nbs_bl.plan_inner_decorators")
 
     # Combine all decorators
-    all_decorators = base_decorators + additional_decorators + [wrap_plan_name]
+    all_decorators = inner_decorators + base_decorators + outer_decorators + [wrap_plan_name]
 
     func_name = func_name or func.__name__
 
@@ -517,7 +519,8 @@ Other detectors may be added on the fly via extra_dets
 
 
 Additional decorators loaded:
-{[d.__name__ for d in additional_decorators]}
+{[d.__name__ for d in inner_decorators]}
+{[d.__name__ for d in outer_decorators]}
 """
     wrapped.__doc__ = d + (wrapped.__doc__ or "")
 
