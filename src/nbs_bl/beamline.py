@@ -176,7 +176,32 @@ class BeamlineModel:
         except Exception as e:
             print(f"Error reloading sample frames for primary sampleholder: {e}")
 
+    def register_mode_function(self, mode, activate_function=None, deactivate_function=None):
+        self._mode_activation_functions[mode] = activate_function
+        self._mode_deactivation_functions[mode] = deactivate_function
+
     def activate_mode(self, modes):
+
+        if modes in self._mode_activation_functions:
+            try:
+                self._mode_activation_functions[modes]()
+            except Exception as e:
+                print(f"Error activating mode {modes}: {e}")
+                return False
+        self.activate_mode_devices(modes)
+        return True
+
+    def deactivate_mode(self, modes):
+        if modes in self._mode_deactivation_functions:
+            try:
+                self._mode_deactivation_functions[modes]()
+            except Exception as e:
+                print(f"Error deactivating mode {modes}: {e}")
+                return False
+
+        self.deactivate_mode_devices(modes)
+
+    def activate_mode_devices(self, modes):
         if not isinstance(modes, (list, tuple)):
             modes = [modes]
         all_devices = set(self.devices.keys())
@@ -197,7 +222,7 @@ class BeamlineModel:
             print(f"Loading deferred device {device_name}")
             self.load_deferred_device(device_name)
 
-    def deactivate_mode(self, modes):
+    def deactivate_mode_devices(self, modes):
         if not isinstance(modes, (list, tuple)):
             modes = [modes]
         devices_to_defer = set()
@@ -399,6 +424,8 @@ class BeamlineModel:
         self.plan_status = {}
         self._deferred_config = {}
         self._deferred_devices = set()
+        self._mode_activation_functions = {}
+        self._mode_deactivation_functions = {}
 
         self.groups = list(self.default_groups)
         self.roles = list(self.default_roles)
