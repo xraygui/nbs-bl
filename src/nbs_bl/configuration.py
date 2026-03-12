@@ -339,38 +339,6 @@ class SetupSpecialDevicesStep(InitializationStep):
         return context
 
 
-class ConfigureBaselineStep(InitializationStep):
-    """Configure baseline devices for bluesky"""
-
-    @property
-    def name(self) -> str:
-        return "Configure Baseline"
-
-    @property
-    def depends_on(self) -> list[type]:
-        return [LoadDevicesStep]
-
-    def execute(self, beamline: BeamlineModel, context: dict) -> dict:
-        configuration = beamline.config.get("configuration", {})
-        baseline_groups = configuration.get("baseline", [])
-        all_device_config = beamline.config.get("devices", {})
-
-        for groupname in baseline_groups:
-            group = getattr(beamline, groupname, None)
-            if group:
-                for key in group.devices:
-                    device_config = all_device_config.get(key, {})
-                    should_add = device_config.get("_baseline", True)
-                    if should_add:
-                        beamline.add_to_baseline(key, False)
-
-        for key, device_config in all_device_config.items():
-            if device_config.get("_baseline", False):
-                if key in beamline.devices:
-                    beamline.add_to_baseline(key, False)
-
-        return context
-
 class UserStartupHook(InitializationStep):
     """Configure modules"""
 
@@ -494,7 +462,6 @@ class BeamlineInitializer:
             InitializeRunEngineStep(),
             LoadDevicesStep(),
             SetupSpecialDevicesStep(),
-            ConfigureBaselineStep(),
             UserStartupHook(),
             LoadPlansStep(),
             InitializeGlobalNamespaceStep(),

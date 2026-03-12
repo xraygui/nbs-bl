@@ -3,6 +3,7 @@ from .queueserver import GLOBAL_USER_STATUS
 from .status import StatusDict
 from .hw import HardwareGroup, DetectorGroup, loadDevices
 from nbs_core.autoload import instantiateOphyd, _find_deferred_devices
+from .utils import iterfy
 
 import IPython
 
@@ -84,6 +85,7 @@ class BeamlineModel:
         self.devices[device_name] = device_info["device"]
         self._add_device_to_groups(device_name, device_info)
         self._set_device_roles(device_name, device_info)
+        self._add_device_to_baseline(device_name, device_info)
 
     def _add_device_to_modes(self, device_name, device_info):
         modes = device_info["config"].get("_modes", [])
@@ -304,12 +306,29 @@ class BeamlineModel:
         return device
 
     def add_to_baseline(self, device_or_name, only_subdevice=False):
+
         if isinstance(device_or_name, str):
             device = self.get_device(device_or_name, only_subdevice)
         else:
             device = device_or_name
         if device not in self.supplemental_data.baseline:
             self.supplemental_data.baseline.append(device)
+
+    def _add_device_to_baseline(self, device_name, device_info):
+        configuration = self.config.get("configuration", {})
+        baseline_groups = configuration.get("baseline", [])
+        device_groups = device_info.get("groups", [])
+        should_add = device_info.get("config", {}).get("_baseline", False)
+
+        if not should_add:
+            for group in device_groups:
+                if group in baseline_groups:
+                    print(f"Group {group} is in baseline groups")
+                    should_add = device_info.get("config", {}).get("_baseline", True)
+                    break
+
+        if should_add:
+            self.add_to_baseline(device_name, False)
 
     def _add_device_to_groups(self, device_key, device_info):
         groups = device_info["groups"]
