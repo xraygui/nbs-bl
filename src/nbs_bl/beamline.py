@@ -113,7 +113,7 @@ class BeamlineModel:
             if role != "":
                 if role not in self.roles:
                     self.roles.append(role)
-                print(f"Setting {role} to {device_name}")
+                # print(f"Setting {role} to {device_name}")
                 setattr(self, role, self.devices[device_name])
 
     def handle_special_devices(self):
@@ -221,7 +221,7 @@ class BeamlineModel:
         for device_name in devices_to_defer:
             self.defer_device(device_name)
         for device_name in devices_to_load:
-            print(f"Loading deferred device {device_name}")
+            # print(f"Loading deferred device {device_name}")
             self.load_deferred_device(device_name)
 
     def deactivate_mode_devices(self, modes):
@@ -279,7 +279,7 @@ class BeamlineModel:
             )
             for device_name, device_info in devices.items():
                 if device_info.get("loaded", False):
-                    print(f"Adding {device_name}")
+                    # print(f"Adding {device_name}")
                     self.add_device(device_name, device_info)
 
                     self._deferred_config.pop(device_name, None)
@@ -323,7 +323,7 @@ class BeamlineModel:
         if not should_add:
             for group in device_groups:
                 if group in baseline_groups:
-                    print(f"Group {group} is in baseline groups")
+                    # print(f"Group {group} is in baseline groups")
                     should_add = device_info.get("config", {}).get("_baseline", True)
                     break
 
@@ -459,7 +459,7 @@ class BeamlineModel:
 
 
     def _initialize_groups(self):
-        print("Initializing groups")
+        # print("Initializing groups")
         for group in self.default_groups:
             setattr(self, group, HardwareGroup(group))
 

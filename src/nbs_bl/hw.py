@@ -13,7 +13,7 @@ def loadDevices(device_config, namespace=None, mode=None):
     deferred_config = {}
     deferred_devices = set()
     for pass_num in range(1, max_load_pass + 1):
-        print(f"    Load pass {pass_num}/{max_load_pass}")
+        # print(f"    Load pass {pass_num}/{max_load_pass}")
 
         _, _, _deferred_config = _find_deferred_devices(device_config, mode=mode)
 
