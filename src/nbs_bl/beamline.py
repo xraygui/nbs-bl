@@ -182,7 +182,7 @@ class BeamlineModel:
         self._mode_activation_functions[mode] = activate_function
         self._mode_deactivation_functions[mode] = deactivate_function
 
-    def activate_mode(self, modes):
+    def activate_mode(self, modes, namespace=None):
 
         if modes in self._mode_activation_functions:
             try:
@@ -190,7 +190,7 @@ class BeamlineModel:
             except Exception as e:
                 print(f"Error activating mode {modes}: {e}")
                 return False
-        self.activate_mode_devices(modes)
+        self.activate_mode_devices(modes, namespace=namespace)
         return True
 
     def deactivate_mode(self, modes):
@@ -203,7 +203,7 @@ class BeamlineModel:
 
         self.deactivate_mode_devices(modes)
 
-    def activate_mode_devices(self, modes):
+    def activate_mode_devices(self, modes, namespace=None):
         if not isinstance(modes, (list, tuple)):
             modes = [modes]
         all_devices = set(self.devices.keys())
@@ -222,7 +222,7 @@ class BeamlineModel:
             self.defer_device(device_name)
         for device_name in devices_to_load:
             # print(f"Loading deferred device {device_name}")
-            self.load_deferred_device(device_name)
+            self.load_deferred_device(device_name, namespace=namespace)
 
     def deactivate_mode_devices(self, modes):
         if not isinstance(modes, (list, tuple)):
@@ -235,7 +235,7 @@ class BeamlineModel:
         for device_name in devices_to_defer:
             self.defer_device(device_name)
 
-    def load_deferred_device(self, device_name, ns=None):
+    def load_deferred_device(self, device_name, namespace=None):
         """
         Load a specific deferred device and its dependencies.
         If an alias is requested, loads its root device.
@@ -266,7 +266,7 @@ class BeamlineModel:
         if isinstance(config, dict) and "_alias" in config:
             root_device = config["_alias"].split(".")[0]
             if root_device != device_name:  # Prevent recursion
-                return self.load_deferred_device(root_device, ns)
+                return self.load_deferred_device(root_device, namespace=namespace)
 
         # Create config with just this device and its dependencies
         self._deferred_config[device_name]["_defer_loading"] = False
@@ -274,7 +274,7 @@ class BeamlineModel:
         try:
             devices = loadDevices(
                 self._deferred_config,
-                namespace=ns,
+                namespace=namespace,
                 mode=None,
             )
             for device_name, device_info in devices.items():
