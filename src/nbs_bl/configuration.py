@@ -347,6 +347,11 @@ class InitializeRunEngineStep(InitializationStep):
                 configure_kafka_publisher(beamline.run_engine, name, override_config_path=kafka_file)
             else:
                 configure_kafka_publisher(beamline.run_engine, name)
+        zmq_cfg = beamline.settings.get("zmq", {})
+        if zmq_cfg and zmq_cfg.get("enabled", True):
+            from bluesky.callbacks.zmq import Publisher
+            publisher = Publisher(zmq_cfg.get("host", "localhost:5577"))
+            beamline.run_engine.subscribe(publisher)
 
         return context
 
