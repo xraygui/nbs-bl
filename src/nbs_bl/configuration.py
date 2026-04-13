@@ -350,7 +350,10 @@ class InitializeRunEngineStep(InitializationStep):
         zmq_cfg = beamline.settings.get("zmq", {})
         if zmq_cfg and zmq_cfg.get("enabled", True):
             from bluesky.callbacks.zmq import Publisher
-            publisher = Publisher(zmq_cfg.get("host", "localhost:5577"))
+            hostname = zmq_cfg.get("hostname", "localhost")
+            port = zmq_cfg.get("port", 5577)
+            self.print_substep(f"Subscribing to ZMQ publisher at {hostname}:{port}")
+            publisher = Publisher(f"{hostname}:{port}")
             beamline.run_engine.subscribe(publisher)
 
         return context
