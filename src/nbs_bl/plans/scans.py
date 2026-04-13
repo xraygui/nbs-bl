@@ -1,6 +1,6 @@
 from .scan_decorators import dynamic_scan_wrapper
 from .scan_base import _make_gscan_points
-from .flyscan_base import fly_scan
+from .flyscan_base import fly_scan, fly_count
 from ..help import add_to_scan_list, add_to_plan_time_dict
 from ..utils import merge_func
 from ..beamline import GLOBAL_BEAMLINE as bl
@@ -29,6 +29,7 @@ _scan_list = [
     bp.rel_spiral_fermat,
     bp.rel_spiral_square,
     fly_scan,
+    fly_count,
 ]
 
 for _scan in _scan_list:
@@ -41,6 +42,11 @@ for _scan in _scan_list:
 add_to_plan_time_dict(
     nbs_count, "generic_estimate", fixed=0, overhead=0.05, dwell="dwell", points="num"
 )
+
+add_to_plan_time_dict(
+    fly_count, "generic_estimate", fixed=0, overhead=0.05, dwell="dwell", points="num"
+)
+
 for _scan in [
     bp.scan,
     nbs_scan,

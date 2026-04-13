@@ -1,4 +1,4 @@
-from os.path import join
+import os
 from importlib.util import find_spec
 from importlib.metadata import entry_points
 from .beamline import GLOBAL_BEAMLINE, BeamlineModel
@@ -7,6 +7,8 @@ from .run_engine import create_run_engine
 from .hw import loadDevices
 from abc import ABC, abstractmethod
 from os.path import join, exists
+from .tiledWriter import subscribe_tiled_profile
+from nbs_core.autoconf import load_settings
 try:
     import tomllib
 except ModuleNotFoundError:
@@ -63,6 +65,9 @@ class InitializationStep(ABC):
     Steps can declare dependencies on other step classes.
     """
 
+    def __init__(self):
+        self.substep_iterator = (chr(i) for i in range(ord("a"), ord("z") + 1))
+
     @abstractmethod
     def execute(self, beamline: BeamlineModel, context: dict) -> dict:
         """
@@ -108,6 +113,16 @@ class InitializationStep(ABC):
         """
         return []
 
+    def print_substep(self, message: str):
+        try:
+            substep = next(self.substep_iterator)
+        except StopIteration:
+            substep = "-"
+        print(f"  Substep {substep}: {message}")
+
+    def print_status(self, status: str):
+        print(f"  {self.name}: {status}")
+
 class BlockStep(InitializationStep):
 
     @property
@@ -128,6 +143,7 @@ class LoadSettingsStep(InitializationStep):
         _default_settings = {
             "device_filename": "devices.toml",
             "beamline_filename": "beamline.toml",
+            "sim_filename": "sim_conf.toml",
         }
         startup_dir = context["startup_dir"]
         settings_file = join(startup_dir, context.get("beamline_filename", _default_settings["beamline_filename"]))
@@ -135,18 +151,33 @@ class LoadSettingsStep(InitializationStep):
         settings_dict = {}
         settings_dict.update(_default_settings)
 
+        sim_mode = os.environ.get("NBS_SIM_MODE", "0")
+        if sim_mode == "1":
+            sim_mode = True
+        else:
+            sim_mode = False
+
+        if sim_mode:
+            print("**********************************************************")
+            print("*                                                        *")
+            print("*                    SIMULATION MODE                     *")
+            print("*           Using simulated devices and plans            *")
+            print("*                                                        *")
+            print("**********************************************************")
+
         if not exists(settings_file):
-            print("No settings found, using defaults")
+            self.print_status("No settings found, using defaults")
             config = {}
         else:
-            with open(settings_file, "rb") as f:
-                config = tomllib.load(f)
+            config = load_settings(settings_file, sim_mode=sim_mode)
 
         settings_dict.update(config.get("settings", {}))
         beamline.settings.update(settings_dict)
         beamline.settings["startup_dir"] = startup_dir
+        beamline.settings["sim_mode"] = sim_mode
+        context["sim_mode"] = sim_mode
 
-        print(f"  Settings: {beamline.settings}")
+        # self.print_status(f"Settings: {beamline.settings}")
         return context
 
 
@@ -157,16 +188,19 @@ class LoadConfigurationFilesStep(InitializationStep):
     def name(self) -> str:
         return "Load Configuration Files"
 
+    @property
+    def depends_on(self) -> list[type]:
+        return [LoadSettingsStep]
+
     def execute(self, beamline: BeamlineModel, context: dict) -> dict:
         startup_dir = context["startup_dir"]
+        sim_mode = context["sim_mode"]
         device_file = join(startup_dir, beamline.settings["device_filename"])
         beamline_file = join(startup_dir, beamline.settings["beamline_filename"])
 
-        with open(beamline_file, "rb") as f:
-            beamline_config = tomllib.load(f)
-
-        with open(device_file, "rb") as f:
-            device_config = tomllib.load(f)
+        
+        beamline_config = load_settings(beamline_file, sim_mode=sim_mode)
+        device_config = load_settings(device_file, sim_mode=sim_mode)
 
         beamline.config.update(beamline_config)
         beamline.config["devices"] = device_config
@@ -191,7 +225,7 @@ class UserInitializationHook(InitializationStep):
 
         for module_name in modules:
             module_path = find_spec(module_name).origin
-            print(f"Trying to import {module_name} from {module_path}")
+            self.print_substep(f"Trying to import {module_name} from {module_path}")
             ip.run_line_magic("run", module_path)
 
         return context
@@ -230,7 +264,7 @@ class InitializeRedisStep(InitializationStep):
             )
             tmp_settings.update(beamline.settings)
             beamline.settings = tmp_settings
-            print(f"  Settings from Redis: {beamline.settings}")
+            # self.print_status(f"Settings from Redis: {beamline.settings}")
 
         beamline.plan_status = GLOBAL_USER_STATUS.request_status_dict(
             "PLAN_STATUS", use_redis=True
@@ -288,12 +322,73 @@ class InitializeRunEngineStep(InitializationStep):
         return [InitializeMetadataStep]
 
     def execute(self, beamline: BeamlineModel, context: dict) -> dict:
+        self.print_substep("Creating run engine")
         beamline.run_engine = create_run_engine(setup=True)
 
         beamline.run_engine.md = beamline.md
         context["namespace"].update({"RE": beamline.run_engine})
+
+        tiled_cfg = (
+            beamline.settings.get("tiled_writer", {})
+        )
+        if tiled_cfg and tiled_cfg.get("enabled", True):
+            self.print_substep("Subscribing to Tiled writer")
+            client = subscribe_tiled_profile(beamline.run_engine, tiled_cfg)
+            context["namespace"]["tiled_writing_client"] = client
+
+        kafka_cfg = (beamline.settings.get("kafka", {}))
+        if kafka_cfg and kafka_cfg.get("enabled", True):
+            from nslsii import configure_kafka_publisher
+
+            name = kafka_cfg.get("name")
+            kafka_file = kafka_cfg.get("config_file", None)
+            self.print_substep(f"Subscribing to Kafka topic: {name}")
+            if kafka_file is not None:
+                configure_kafka_publisher(beamline.run_engine, name, override_config_path=kafka_file)
+            else:
+                configure_kafka_publisher(beamline.run_engine, name)
+        zmq_cfg = beamline.settings.get("zmq", {})
+        if zmq_cfg and zmq_cfg.get("enabled", True):
+            from bluesky.callbacks.zmq import Publisher
+            hostname = zmq_cfg.get("hostname", "localhost")
+            port = zmq_cfg.get("port", 5577)
+            self.print_substep(f"Subscribing to ZMQ publisher at {hostname}:{port}")
+            publisher = Publisher(f"{hostname}:{port}")
+            beamline.run_engine.subscribe(publisher)
+
         return context
 
+class InitializeLoggingStep(InitializationStep):
+    """Initialize logging"""
+
+    @property
+    def name(self) -> str:
+        return "Initialize Logging"
+
+    def execute(self, beamline: BeamlineModel, context: dict) -> dict:
+
+        logging_config = beamline.settings.get("logging", {})
+
+        if logging_config.get("enabled", True) and logging_config.get("method", "nslsii") == "nslsii":
+
+            from nslsii import configure_bluesky_logging, configure_ipython_logging
+            from nslsii.common.ipynb.logutils import log_exception
+            import logging
+
+            self.print_substep("Configuring nslsii logging")
+            configure_bluesky_logging(ipython=get_ipython())
+            configure_ipython_logging(exception_logger=log_exception, ipython=get_ipython())
+
+            possible_loggers = ["bluesky", "caproto", "ophyd", "nslsii"]
+            for logger_name in possible_loggers:
+                individual_log_config = logging_config.get(logger_name, {})
+                if individual_log_config:
+                    logger = logging.getLogger(logger_name)
+                    level = individual_log_config.get("level", None)
+                    if level:
+                        logger.setLevel(level)
+
+        return context
 
 class LoadDevicesStep(InitializationStep):
     """Load devices from configuration (multi-pass)"""
@@ -339,38 +434,6 @@ class SetupSpecialDevicesStep(InitializationStep):
         return context
 
 
-class ConfigureBaselineStep(InitializationStep):
-    """Configure baseline devices for bluesky"""
-
-    @property
-    def name(self) -> str:
-        return "Configure Baseline"
-
-    @property
-    def depends_on(self) -> list[type]:
-        return [LoadDevicesStep]
-
-    def execute(self, beamline: BeamlineModel, context: dict) -> dict:
-        configuration = beamline.config.get("configuration", {})
-        baseline_groups = configuration.get("baseline", [])
-        all_device_config = beamline.config.get("devices", {})
-
-        for groupname in baseline_groups:
-            group = getattr(beamline, groupname, None)
-            if group:
-                for key in group.devices:
-                    device_config = all_device_config.get(key, {})
-                    should_add = device_config.get("_baseline", True)
-                    if should_add:
-                        beamline.add_to_baseline(key, False)
-
-        for key, device_config in all_device_config.items():
-            if device_config.get("_baseline", False):
-                if key in beamline.devices:
-                    beamline.add_to_baseline(key, False)
-
-        return context
-
 class UserStartupHook(InitializationStep):
     """Configure modules"""
 
@@ -388,7 +451,7 @@ class UserStartupHook(InitializationStep):
 
         for module_name in modules:
             module_path = find_spec(module_name).origin
-            print(f"Trying to import {module_name} from {module_path}")
+            self.print_substep(f"Trying to import {module_name} from {module_path}")
             ip.run_line_magic("run", module_path)
 
         return context
@@ -415,17 +478,16 @@ class LoadPlansStep(InitializationStep):
         """
         startup_dir = context["startup_dir"]
         plan_settings = beamline.settings.get("plans", {})
-        print(f"Loading plans from {startup_dir}")
+        self.print_status(f"Loading plans from {startup_dir}")
         # Iterate through all registered plan loaders
         for entry_point in entry_points(group="nbs_bl.plan_loaders"):
             plan_type = entry_point.name
-            print(f"Loading {plan_type} plans")
             plan_files = plan_settings.get(plan_type, [])
 
             if not plan_files:
                 print(f"No {plan_type} plans found")
                 continue
-            print(f"Loading {plan_type} plans from {plan_files}")
+            self.print_substep(f"Loading {plan_type} plans from {plan_files}")
             # Load the plan loader function
             plan_loader = entry_point.load()
 
@@ -434,7 +496,7 @@ class LoadPlansStep(InitializationStep):
                 full_path = join(startup_dir, plan_file)
                 try:
                     plan_loader(full_path)
-                    print(f"Loaded {plan_type} plans from {plan_file}")
+                    # print(f"Loaded {plan_type} plans from {plan_file}")
                 except Exception as e:
                     print(f"Error loading {plan_type} plans from {plan_file}: {str(e)}")
 
@@ -458,6 +520,7 @@ class InitializeGlobalNamespaceStep(InitializationStep):
             if key not in context["namespace"]:
                 context["namespace"][key] = GLOBAL_IMPORT_DICTIONARY[key]
         return context
+
 
 class BeamlineInitializer:
     """
@@ -488,13 +551,13 @@ class BeamlineInitializer:
         self.steps = [
             LoadSettingsStep(),
             LoadConfigurationFilesStep(),
+            InitializeLoggingStep(),
             UserInitializationHook(),
             InitializeRedisStep(),
             InitializeMetadataStep(),
             InitializeRunEngineStep(),
             LoadDevicesStep(),
             SetupSpecialDevicesStep(),
-            ConfigureBaselineStep(),
             UserStartupHook(),
             LoadPlansStep(),
             InitializeGlobalNamespaceStep(),

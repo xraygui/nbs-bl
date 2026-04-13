@@ -8,6 +8,7 @@ from .plan_stubs import call_obj
 from bluesky.utils import Msg, ensure_generator, short_uid as _short_uid, single_gen
 from bluesky.preprocessors import plan_mutator
 from typing import Optional
+from bluesky.plans import count
 
 
 def flystream_during_wrapper(plan, flyers):
@@ -178,3 +179,21 @@ def fly_scan(
         return (yield from flystream_during_wrapper(inner_flyscan(), flyers))
     else:
         return (yield from inner_flyscan())
+
+
+def fly_count(detectors, num: int,
+    md: Optional[dict] = None,
+    **kwargs,
+):
+    md = md or {}
+
+    flyers = [d for d in detectors if isinstance(d, Flyable)]
+    readers = [d for d in detectors if isinstance(d, Readable)]
+
+    _md = {
+        "flyers": [det.name for det in flyers],
+        "plan_name": "fly_count",
+    }
+    _md.update(md or {})
+
+    return (yield from flystream_during_wrapper(count(readers, num, md=_md,**kwargs), flyers))

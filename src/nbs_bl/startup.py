@@ -17,11 +17,8 @@ from nbs_bl.plans.plan_stubs import set_exposure
 from nbs_bl.queueserver import request_update, get_status
 from nbs_bl.samples import list_samples
 from nbs_bl.beamline import GLOBAL_BEAMLINE
+from nbs_bl.modes import activate_mode, deactivate_mode
 
+print("NBS Startup imports")
+bl = GLOBAL_BEAMLINE
 
-print("NBS Startup")
-
-RE(set_exposure(1.0))
-
-# load_saved_configuration()
-activate_detector_set("default")

@@ -17,7 +17,7 @@ def get_suspender_entrypoints():
     """
     config = GLOBAL_BEAMLINE.config
     suspender_entrypoints = config.get("settings", {}).get("suspenders", [])
-    print(f"Suspender entrypoints: {suspender_entrypoints}")
+    # print(f"Suspender entrypoints: {suspender_entrypoints}")
     suspenders = []
     if suspender_entrypoints:
         eps = entry_points()
@@ -27,7 +27,7 @@ def get_suspender_entrypoints():
                 # Look for entrypoint in nbs_bl.suspenders group
                 matches = eps.select(group="nbs_bl.suspenders", name=ep_name)
                 for match in matches:
-                    print(f"Loading suspender {match.name}")
+                    # print(f"Loading suspender {match.name}")
                     suspender = match.load()
 
                     # Handle both single suspender and list of suspenders

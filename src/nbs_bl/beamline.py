@@ -3,6 +3,7 @@ from .queueserver import GLOBAL_USER_STATUS
 from .status import StatusDict
 from .hw import HardwareGroup, DetectorGroup, loadDevices
 from nbs_core.autoload import instantiateOphyd, _find_deferred_devices
+from .utils import iterfy
 
 import IPython
 
@@ -84,6 +85,7 @@ class BeamlineModel:
         self.devices[device_name] = device_info["device"]
         self._add_device_to_groups(device_name, device_info)
         self._set_device_roles(device_name, device_info)
+        self._add_device_to_baseline(device_name, device_info)
 
     def _add_device_to_modes(self, device_name, device_info):
         modes = device_info["config"].get("_modes", [])
@@ -111,7 +113,7 @@ class BeamlineModel:
             if role != "":
                 if role not in self.roles:
                     self.roles.append(role)
-                print(f"Setting {role} to {device_name}")
+                # print(f"Setting {role} to {device_name}")
                 setattr(self, role, self.devices[device_name])
 
     def handle_special_devices(self):
@@ -176,7 +178,32 @@ class BeamlineModel:
         except Exception as e:
             print(f"Error reloading sample frames for primary sampleholder: {e}")
 
-    def activate_mode(self, modes):
+    def register_mode_function(self, mode, activate_function=None, deactivate_function=None):
+        self._mode_activation_functions[mode] = activate_function
+        self._mode_deactivation_functions[mode] = deactivate_function
+
+    def activate_mode(self, modes, namespace=None):
+
+        if modes in self._mode_activation_functions:
+            try:
+                self._mode_activation_functions[modes]()
+            except Exception as e:
+                print(f"Error activating mode {modes}: {e}")
+                return False
+        self.activate_mode_devices(modes, namespace=namespace)
+        return True
+
+    def deactivate_mode(self, modes):
+        if modes in self._mode_deactivation_functions:
+            try:
+                self._mode_deactivation_functions[modes]()
+            except Exception as e:
+                print(f"Error deactivating mode {modes}: {e}")
+                return False
+
+        self.deactivate_mode_devices(modes)
+
+    def activate_mode_devices(self, modes, namespace=None):
         if not isinstance(modes, (list, tuple)):
             modes = [modes]
         all_devices = set(self.devices.keys())
@@ -194,9 +221,10 @@ class BeamlineModel:
         for device_name in devices_to_defer:
             self.defer_device(device_name)
         for device_name in devices_to_load:
-            self.load_deferred_device(device_name)
+            # print(f"Loading deferred device {device_name}")
+            self.load_deferred_device(device_name, namespace=namespace)
 
-    def deactivate_mode(self, modes):
+    def deactivate_mode_devices(self, modes):
         if not isinstance(modes, (list, tuple)):
             modes = [modes]
         devices_to_defer = set()
@@ -207,7 +235,7 @@ class BeamlineModel:
         for device_name in devices_to_defer:
             self.defer_device(device_name)
 
-    def load_deferred_device(self, device_name, ns=None):
+    def load_deferred_device(self, device_name, namespace=None):
         """
         Load a specific deferred device and its dependencies.
         If an alias is requested, loads its root device.
@@ -238,23 +266,24 @@ class BeamlineModel:
         if isinstance(config, dict) and "_alias" in config:
             root_device = config["_alias"].split(".")[0]
             if root_device != device_name:  # Prevent recursion
-                return self.load_deferred_device(root_device, ns)
+                return self.load_deferred_device(root_device, namespace=namespace)
 
         # Create config with just this device and its dependencies
         self._deferred_config[device_name]["_defer_loading"] = False
-
+        
         try:
             devices = loadDevices(
                 self._deferred_config,
-                namespace=ns,
+                namespace=namespace,
                 mode=None,
             )
             for device_name, device_info in devices.items():
-                self.add_device(device_name, device_info)
+                if device_info.get("loaded", False):
+                    # print(f"Adding {device_name}")
+                    self.add_device(device_name, device_info)
 
-            for device_name in devices:
-                self._deferred_config.pop(device_name, None)
-                self._deferred_devices.discard(device_name)
+                    self._deferred_config.pop(device_name, None)
+                    self._deferred_devices.discard(device_name)
 
             return self.devices.get(device_name)
         except Exception as e:
@@ -277,12 +306,29 @@ class BeamlineModel:
         return device
 
     def add_to_baseline(self, device_or_name, only_subdevice=False):
+
         if isinstance(device_or_name, str):
             device = self.get_device(device_or_name, only_subdevice)
         else:
             device = device_or_name
         if device not in self.supplemental_data.baseline:
             self.supplemental_data.baseline.append(device)
+
+    def _add_device_to_baseline(self, device_name, device_info):
+        configuration = self.config.get("configuration", {})
+        baseline_groups = configuration.get("baseline", [])
+        device_groups = device_info.get("groups", [])
+        should_add = device_info.get("config", {}).get("_baseline", False)
+
+        if not should_add:
+            for group in device_groups:
+                if group in baseline_groups:
+                    # print(f"Group {group} is in baseline groups")
+                    should_add = device_info.get("config", {}).get("_baseline", True)
+                    break
+
+        if should_add:
+            self.add_to_baseline(device_name, False)
 
     def _add_device_to_groups(self, device_key, device_info):
         groups = device_info["groups"]
@@ -397,6 +443,8 @@ class BeamlineModel:
         self.plan_status = {}
         self._deferred_config = {}
         self._deferred_devices = set()
+        self._mode_activation_functions = {}
+        self._mode_deactivation_functions = {}
 
         self.groups = list(self.default_groups)
         self.roles = list(self.default_roles)
@@ -411,7 +459,7 @@ class BeamlineModel:
 
 
     def _initialize_groups(self):
-        print("Initializing groups")
+        # print("Initializing groups")
         for group in self.default_groups:
             setattr(self, group, HardwareGroup(group))
 
