@@ -2,7 +2,7 @@ from .status import StatusDict, StatusContainerBase, RedisStatusDict, StatusList
 from collections import abc
 from ophyd import OphydObject
 # import redis
-from nslsii.utils import open_redis_client
+from .redisUtils import open_redis_client_from_settings
 
 
 class GlobalStatusManager:
@@ -24,7 +24,7 @@ class GlobalStatusManager:
         self._redis_port = redis_port
         self._global_prefix = None
 
-    def init_redis(self, host=None, port=None, db=0, global_prefix="status:", ssl=False):
+    def init_redis(self, redis_settings):
         """
         Initialize Redis connection with optional new host/port and global prefix
 
@@ -37,21 +37,11 @@ class GlobalStatusManager:
         global_prefix : str, optional
             Global prefix for all Redis keys, by default "status:"
         """
-        if host is not None:
-            self._redis_host = host
-        if port is not None:
-            self._redis_port = port
+        self._redis_host = redis_settings.get("host", self._redis_host)
+        self._redis_port = redis_settings.get("port", self._redis_port)
 
-        self._global_prefix = global_prefix
-        print(f"Initializing redis Client with {host}, {port}, {db}")
-        #self._redis_client = redis.Redis(
-        #    host=self._redis_host, port=self._redis_port, db=db
-        #)
-        self._redis_client = open_redis_client(redis_url=self._redis_host,
-                                               redis_port=self._redis_port,
-                                               redis_ssl=ssl,
-                                               redis_prefix = self._global_prefix,
-                                               redis_db=db)
+        self._global_prefix = redis_settings.get("prefix", self._global_prefix)
+        self._redis_client = open_redis_client_from_settings(redis_settings)
         return self._redis_client
 
     def add_status(self, key, container: StatusContainerBase):
