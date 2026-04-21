@@ -252,12 +252,7 @@ class InitializeRedisStep(InitializationStep):
         beamline.redis_settings = redis_settings
 
         if redis_settings:
-            GLOBAL_USER_STATUS.init_redis(
-                host=redis_settings["host"],
-                port=redis_settings.get("port", None),
-                db=redis_settings.get("db", 0),
-                global_prefix=redis_settings.get("prefix", ""),
-            )
+            GLOBAL_USER_STATUS.init_redis(redis_settings)
 
             tmp_settings = GLOBAL_USER_STATUS.request_status_dict(
                 "SETTINGS", use_redis=True
@@ -288,15 +283,11 @@ class InitializeMetadataStep(InitializationStep):
         )
 
         if redis_md_settings:
-            import redis
+            from nbs_bl.redisUtils import open_redis_client_from_settings
             from nbs_bl.status import RedisStatusDict
             from nbs_bl.redisDevice import _RedisSignal
 
-            mdredis = redis.Redis(
-                redis_md_settings["host"],
-                port=redis_md_settings.get("port", 6379),
-                db=redis_md_settings.get("db", 0),
-            )
+            mdredis = open_redis_client_from_settings(redis_md_settings)
             beamline.md = RedisStatusDict(
                 mdredis, prefix=redis_md_settings.get("prefix", "")
             )

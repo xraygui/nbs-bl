@@ -28,6 +28,7 @@ dependencies = ["bluesky",
     "redis_json_dict",
     "numpydoc",
     "nbs-core>=0.2",
+    "nslsii",
     'tomli ; python_version < "3.11"']
 
 [project.urls]
