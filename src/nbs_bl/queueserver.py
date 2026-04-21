@@ -1,7 +1,8 @@
 from .status import StatusDict, StatusContainerBase, RedisStatusDict, StatusList
 from collections import abc
 from ophyd import OphydObject
-import redis
+# import redis
+from nslsii.utils import open_redis_client
 
 
 class GlobalStatusManager:
@@ -23,7 +24,7 @@ class GlobalStatusManager:
         self._redis_port = redis_port
         self._global_prefix = None
 
-    def init_redis(self, host=None, port=None, db=0, global_prefix="status:"):
+    def init_redis(self, host=None, port=None, db=0, global_prefix="status:", ssl=False):
         """
         Initialize Redis connection with optional new host/port and global prefix
 
@@ -43,9 +44,14 @@ class GlobalStatusManager:
 
         self._global_prefix = global_prefix
         print(f"Initializing redis Client with {host}, {port}, {db}")
-        self._redis_client = redis.Redis(
-            host=self._redis_host, port=self._redis_port, db=db
-        )
+        #self._redis_client = redis.Redis(
+        #    host=self._redis_host, port=self._redis_port, db=db
+        #)
+        self._redis_client = open_redis_client(redis_url=self._redis_host,
+                                               redis_port=self._redis_port,
+                                               redis_ssl=ssl,
+                                               redis_prefix = self._global_prefix,
+                                               redis_db=db)
         return self._redis_client
 
     def add_status(self, key, container: StatusContainerBase):
