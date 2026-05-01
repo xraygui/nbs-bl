@@ -7,7 +7,7 @@ from .run_engine import create_run_engine
 from .hw import loadDevices
 from abc import ABC, abstractmethod
 from os.path import join, exists
-from .tiledWriter import subscribe_tiled_profile
+from .publishers import publish_to_tiled, publish_to_kafka, publish_to_zmq
 from nbs_core.autoconf import load_settings
 try:
     import tomllib
@@ -324,28 +324,16 @@ class InitializeRunEngineStep(InitializationStep):
         )
         if tiled_cfg and tiled_cfg.get("enabled", True):
             self.print_substep("Subscribing to Tiled writer")
-            client = subscribe_tiled_profile(beamline.run_engine, tiled_cfg)
+            client = publish_to_tiled(beamline.run_engine, tiled_cfg, print_substep=self.print_substep)
             context["namespace"]["tiled_writing_client"] = client
 
         kafka_cfg = (beamline.settings.get("kafka", {}))
         if kafka_cfg and kafka_cfg.get("enabled", True):
-            from nslsii import configure_kafka_publisher
+            publish_to_kafka(beamline.run_engine, kafka_cfg, print_substep=self.print_substep)
 
-            name = kafka_cfg.get("name")
-            kafka_file = kafka_cfg.get("config_file", None)
-            self.print_substep(f"Subscribing to Kafka topic: {name}")
-            if kafka_file is not None:
-                configure_kafka_publisher(beamline.run_engine, name, override_config_path=kafka_file)
-            else:
-                configure_kafka_publisher(beamline.run_engine, name)
         zmq_cfg = beamline.settings.get("zmq", {})
         if zmq_cfg and zmq_cfg.get("enabled", True):
-            from bluesky.callbacks.zmq import Publisher
-            hostname = zmq_cfg.get("hostname", "localhost")
-            port = zmq_cfg.get("port", 5577)
-            self.print_substep(f"Subscribing to ZMQ publisher at {hostname}:{port}")
-            publisher = Publisher(f"{hostname}:{port}")
-            beamline.run_engine.subscribe(publisher)
+            publish_to_zmq(beamline.run_engine, zmq_cfg, print_substep=self.print_substep)
 
         return context
 
@@ -398,8 +386,6 @@ class LoadDevicesStep(InitializationStep):
         ns = context.get("namespace")
         # Move all of this to a helper function in hw.py
         devices = loadDevices(device_config, ns, mode="default")
-
-        
 
         for device_name, device_info in devices.items():
             beamline.add_device(device_name, device_info)
