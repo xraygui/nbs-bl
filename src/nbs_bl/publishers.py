@@ -59,5 +59,6 @@ def publish_to_zmq(run_engine, config, print_substep=print):
         proxy = Proxy(port, out_port)
         proxy_thread = threading.Thread(target=proxy.start, daemon=True)
         proxy_thread.start()
+    print_substep(f"Subscribing to ZMQ publisher on {hostname}:{port}")
     publisher = Publisher(f"{hostname}:{port}")
     run_engine.subscribe(publisher)
