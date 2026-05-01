@@ -1,6 +1,6 @@
 import os
 
-def subscribe_tiled_profile(run_engine, config):
+def publish_to_tiled(run_engine, config, print_substep=print):
     if "profile" in config:
         from tiled.client import from_profile as create_client
         client_args = [config['profile'],]
@@ -35,3 +35,26 @@ def subscribe_tiled_profile(run_engine, config):
     run_engine.subscribe(callback)
     return client
 
+def publish_to_kafka(run_engine, config, print_substep=print):
+    from nslsii import configure_kafka_publisher
+
+    name = config.get("name")
+    kafka_file = config.get("config_file", None)
+    print_substep(f"Publishing to Kafka topic: {name}")
+    if kafka_file is not None:
+        configure_kafka_publisher(run_engine, name, override_config_path=kafka_file)
+    else:
+        configure_kafka_publisher(run_engine, name)
+
+def publish_to_zmq(run_engine, config, print_substep=print):
+    from bluesky.callbacks.zmq import Publisher, Proxy
+
+    hostname = config.get("hostname", "localhost")
+    port = config.get("port", 5577)
+    start_proxy = config.get("start_proxy", False)
+    if start_proxy:
+        output_port = config.get("output_port", 5578)
+        print_substep(f"Starting ZMQ proxy on {port} and forwarding to {output_port}")
+        Proxy(port, output_port)
+    publisher = Publisher(f"{hostname}:{port}")
+    run_engine.subscribe(publisher)
