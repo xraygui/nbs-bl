@@ -47,14 +47,17 @@ def publish_to_kafka(run_engine, config, print_substep=print):
         configure_kafka_publisher(run_engine, name)
 
 def publish_to_zmq(run_engine, config, print_substep=print):
+    import threading
     from bluesky.callbacks.zmq import Publisher, Proxy
 
     hostname = config.get("hostname", "localhost")
     port = config.get("port", 5577)
     start_proxy = config.get("start_proxy", False)
     if start_proxy:
-        output_port = config.get("output_port", 5578)
-        print_substep(f"Starting ZMQ proxy on {port} and forwarding to {output_port}")
-        Proxy(port, output_port)
+        out_port = config.get("out_port", port + 1)
+        print_substep(f"Starting ZMQ proxy on {port} and forwarding to {out_port}")
+        proxy = Proxy(port, out_port)
+        proxy_thread = threading.Thread(target=proxy.start, daemon=True)
+        proxy_thread.start()
     publisher = Publisher(f"{hostname}:{port}")
     run_engine.subscribe(publisher)
