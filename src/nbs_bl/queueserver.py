@@ -22,7 +22,7 @@ class GlobalStatusManager:
         self._redis_client = None
         self._redis_host = redis_host
         self._redis_port = redis_port
-        self._global_prefix = None
+        self._global_prefix = ""
 
     def init_redis(self, redis_settings):
         """
