@@ -386,7 +386,7 @@ class LoadDevicesStep(InitializationStep):
         beamline._initialize_groups()
         ns = context.get("namespace")
         # Move all of this to a helper function in hw.py
-        devices = loadDevices(device_config, ns, mode="default")
+        devices = loadDevices(device_config, ns, mode=beamline.active_modes)
 
         for device_name, device_info in devices.items():
             beamline.add_device(device_name, device_info)

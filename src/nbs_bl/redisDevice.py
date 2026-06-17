@@ -212,6 +212,12 @@ class RedisModeDevice(Device):
         status_key="ACTIVE_MODES",
         default=["default"],
     )
+    available_modes = Cpt(
+        _RedisStatusListSignal,
+        name="available_modes",
+        status_key="AVAILABLE_MODES",
+        default=["default"],
+    )
 
     def __init__(self, prefix, name="", status_provider=None, **kwargs):
         super().__init__(prefix=prefix, name=name, **kwargs)
@@ -238,3 +244,25 @@ class RedisModeDevice(Device):
             Active modes to expose through this device.
         """
         self.active_modes.put(modes)
+
+    def get_available_modes(self):
+        """
+        Return available modes as a Python list.
+
+        Returns
+        -------
+        list of str
+            Available modes from the shared status list.
+        """
+        return self.available_modes._get_values()
+
+    def set_available_modes(self, modes):
+        """
+        Update the selectable mode signals from the beamline state.
+
+        Parameters
+        ----------
+        modes : iterable of str
+            Available modes to expose through this device.
+        """
+        self.available_modes.put(modes)

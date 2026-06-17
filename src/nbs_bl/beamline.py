@@ -160,6 +160,7 @@ class BeamlineModel:
 
         self._mode_namespace = namespace
         self.initialize_active_modes(use_redis=True)
+        self._sync_available_mode_device()
         if self._mode_device is not mode_device:
             active_modes_signal.subscribe(self._active_modes_changed, run=False)
             self._mode_device = mode_device
@@ -224,9 +225,37 @@ class BeamlineModel:
         except Exception as e:
             print(f"Error reloading sample frames for primary sampleholder: {e}")
 
-    def register_mode_function(self, mode, activate_function=None, deactivate_function=None):
+    def register_mode_function(
+        self,
+        mode,
+        activate_function=None,
+        deactivate_function=None,
+        run_hook=False,
+        namespace=None,
+    ):
+        """
+        Register activation and deactivation hooks for a mode.
+
+        Parameters
+        ----------
+        mode : str
+            Mode name.
+        activate_function : callable, optional
+            Function to run when activating the mode.
+        deactivate_function : callable, optional
+            Function to run when deactivating the mode.
+        run_hook : bool, optional
+            Whether to run the activation hook immediately if mode is active.
+        namespace : dict, optional
+            Namespace to use if running the hook loads deferred devices.
+        """
         self._mode_activation_functions[mode] = activate_function
         self._mode_deactivation_functions[mode] = deactivate_function
+        if run_hook and mode in self.active_modes:
+            if self._run_mode_functions(
+                [mode], self._mode_activation_functions, "activating"
+            ):
+                self._reconcile_mode_devices(namespace=namespace)
 
     def activate_mode(self, modes, namespace=None):
         modes = self._normalize_modes(modes)
@@ -350,6 +379,7 @@ class BeamlineModel:
             use_redis=self._active_modes_use_redis,
         )
         self._sync_mode_device(source=source)
+        self._sync_available_mode_device()
 
     def _sync_mode_device(self, source=None):
         mode_device = getattr(self, "mode", None)
@@ -364,7 +394,38 @@ class BeamlineModel:
         finally:
             self._syncing_mode_device = False
 
+    def get_available_modes(self):
+        """
+        Return selectable beamline mode names.
+
+        Returns
+        -------
+        list of str
+            Known modes from configured device modes, active modes, and defaults.
+        """
+        return self._normalize_modes(
+            [
+                *self.default_active_modes,
+                *self.modes.keys(),
+                *self.active_modes,
+            ]
+        )
+
+    def _sync_available_mode_device(self):
+        mode_device = getattr(self, "mode", None)
+        if mode_device is None:
+            return
+        available_modes_signal = getattr(mode_device, "available_modes", None)
+        if available_modes_signal is None:
+            return
+        set_available_modes = getattr(mode_device, "set_available_modes", None)
+        if set_available_modes is not None:
+            set_available_modes(self.get_available_modes())
+        else:
+            available_modes_signal.put(self.get_available_modes())
+
     def _reconcile_mode_devices(self, namespace=None):
+        self._sync_available_mode_device()
         all_devices = set(self.devices.keys())
         mode_devices = set()
         devices_to_load = set()
