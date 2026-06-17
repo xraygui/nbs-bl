@@ -253,6 +253,7 @@ class InitializeRedisStep(InitializationStep):
 
         if redis_settings:
             GLOBAL_USER_STATUS.init_redis(redis_settings)
+            beamline.initialize_active_modes(use_redis=True)
 
             tmp_settings = GLOBAL_USER_STATUS.request_status_dict(
                 "SETTINGS", use_redis=True
@@ -406,7 +407,7 @@ class SetupSpecialDevicesStep(InitializationStep):
         return [LoadDevicesStep]
 
     def execute(self, beamline: BeamlineModel, context: dict) -> dict:
-        beamline.handle_special_devices()
+        beamline.handle_special_devices(namespace=context.get("namespace"))
 
         return context
 

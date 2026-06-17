@@ -9,6 +9,9 @@ import IPython
 
 
 class BeamlineModel:
+    active_modes_key = "ACTIVE_MODES"
+    default_active_modes = ["default"]
+
     default_groups = [
         "shutters",
         "gatevalves",
@@ -91,7 +94,8 @@ class BeamlineModel:
         modes = device_info["config"].get("_modes", [])
         for mode in modes:
             if mode in self.modes:
-                self.modes[mode].append(device_name)
+                if device_name not in self.modes[mode]:
+                    self.modes[mode].append(device_name)
             else:
                 self.modes[mode] = [device_name]
 
@@ -116,14 +120,14 @@ class BeamlineModel:
                 # print(f"Setting {role} to {device_name}")
                 setattr(self, role, self.devices[device_name])
 
-    def handle_special_devices(self):
+    def handle_special_devices(self, namespace=None):
         """
         Handle special device setup, particularly sampleholders.
 
         Parameters
         ----------
-        roles : dict
-            Dictionary mapping role names to device names
+        namespace : dict, optional
+            Namespace to use when mode changes load deferred devices.
         """
         self._setup_sampleholder(
             self.primary_sampleholder,
@@ -138,6 +142,48 @@ class BeamlineModel:
                 "REFERENCE_SELECTED",
                 is_primary=False,
             )
+        self._setup_mode_device(namespace=namespace)
+
+    def _setup_mode_device(self, namespace=None):
+        """
+        Connect a mode role device's active_modes signal to this beamline.
+
+        Parameters
+        ----------
+        namespace : dict, optional
+            Namespace to use when mode changes load deferred devices.
+        """
+        mode_device = getattr(self, "mode", None)
+        active_modes_signal = getattr(mode_device, "active_modes", None)
+        if active_modes_signal is None:
+            return
+
+        self._mode_namespace = namespace
+        self.initialize_active_modes(use_redis=True)
+        if self._mode_device is not mode_device:
+            active_modes_signal.subscribe(self._active_modes_changed, run=False)
+            self._mode_device = mode_device
+
+        get_active_modes = getattr(mode_device, "get_active_modes", None)
+        if get_active_modes is not None:
+            modes = get_active_modes()
+        else:
+            modes = active_modes_signal.get()
+        self.set_active_modes(
+            modes,
+            namespace=namespace,
+            run_hooks=False,
+            source=mode_device,
+        )
+
+    def _active_modes_changed(self, value=None, **kwargs):
+        if self._syncing_mode_device:
+            return
+        self.set_active_modes(
+            value,
+            namespace=self._mode_namespace,
+            source=getattr(self, "mode", None),
+        )
 
     def _setup_sampleholder(self, holder, samples_key, current_key, is_primary=False):
         """
@@ -183,57 +229,166 @@ class BeamlineModel:
         self._mode_deactivation_functions[mode] = deactivate_function
 
     def activate_mode(self, modes, namespace=None):
-
-        if modes in self._mode_activation_functions:
-            try:
-                self._mode_activation_functions[modes]()
-            except Exception as e:
-                print(f"Error activating mode {modes}: {e}")
-                return False
-        self.activate_mode_devices(modes, namespace=namespace)
+        modes = self._normalize_modes(modes)
+        if not self._run_mode_functions(
+            modes, self._mode_activation_functions, "activating"
+        ):
+            return False
+        active_modes = self._normalize_modes([*self.active_modes, *modes])
+        self._set_active_modes(active_modes)
+        self._reconcile_mode_devices(namespace=namespace)
         return True
 
-    def deactivate_mode(self, modes):
-        if modes in self._mode_deactivation_functions:
-            try:
-                self._mode_deactivation_functions[modes]()
-            except Exception as e:
-                print(f"Error deactivating mode {modes}: {e}")
+    def deactivate_mode(self, modes, namespace=None):
+        modes = self._normalize_modes(modes)
+        if not self._run_mode_functions(
+            modes, self._mode_deactivation_functions, "deactivating"
+        ):
+            return False
+
+        active_modes = [mode for mode in self.active_modes if mode not in modes]
+        self._set_active_modes(active_modes)
+        self._reconcile_mode_devices(namespace=namespace)
+        return True
+
+    def set_active_modes(self, modes, namespace=None, run_hooks=True, source=None):
+        """
+        Replace the full active mode set.
+
+        Parameters
+        ----------
+        modes : str or iterable of str
+            Modes that should be active after reconciliation.
+        namespace : dict, optional
+            Namespace to use when mode changes load deferred devices.
+        run_hooks : bool, optional
+            Whether to run mode activation and deactivation hooks.
+        source : object, optional
+            Object that initiated the change.
+
+        Returns
+        -------
+        bool
+            True if mode state was updated.
+        """
+        modes = self._normalize_modes(modes)
+        current_modes = self._normalize_modes(self.active_modes)
+        modes_to_deactivate = [mode for mode in current_modes if mode not in modes]
+        modes_to_activate = [mode for mode in modes if mode not in current_modes]
+
+        if run_hooks:
+            if not self._run_mode_functions(
+                modes_to_deactivate,
+                self._mode_deactivation_functions,
+                "deactivating",
+            ):
+                return False
+            if not self._run_mode_functions(
+                modes_to_activate,
+                self._mode_activation_functions,
+                "activating",
+            ):
                 return False
 
-        self.deactivate_mode_devices(modes)
+        self._set_active_modes(modes, source=source)
+        self._reconcile_mode_devices(namespace=namespace)
+        return True
 
-    def activate_mode_devices(self, modes, namespace=None):
-        if not isinstance(modes, (list, tuple)):
-            modes = [modes]
+    def initialize_active_modes(self, use_redis=False):
+        """
+        Initialize the active mode status list.
+
+        Parameters
+        ----------
+        use_redis : bool, optional
+            Whether to hydrate and persist active modes through Redis.
+
+        Returns
+        -------
+        StatusList
+            The active mode status list.
+        """
+        self._active_modes_use_redis = use_redis
+        active_modes = GLOBAL_USER_STATUS.request_status_list(
+            self.active_modes_key, use_redis=use_redis
+        )
+        modes = self._normalize_modes(active_modes)
+        if not modes:
+            modes = list(self.default_active_modes)
+        self.active_modes = GLOBAL_USER_STATUS.set_status_list(
+            self.active_modes_key,
+            modes,
+            use_redis=use_redis,
+        )
+        return self.active_modes
+
+    def _normalize_modes(self, modes):
+        normalized_modes = []
+        for mode in iterfy(modes):
+            if mode is None:
+                continue
+            if mode not in normalized_modes:
+                normalized_modes.append(mode)
+        return normalized_modes
+
+    def _run_mode_functions(self, modes, functions, action):
+        for mode in modes:
+            function = functions.get(mode, None)
+            if function is None:
+                continue
+            try:
+                function()
+            except Exception as e:
+                print(f"Error {action} mode {mode}: {e}")
+                return False
+        return True
+
+    def _set_active_modes(self, modes, source=None):
+        self.active_modes = GLOBAL_USER_STATUS.set_status_list(
+            self.active_modes_key,
+            self._normalize_modes(modes),
+            use_redis=self._active_modes_use_redis,
+        )
+        self._sync_mode_device(source=source)
+
+    def _sync_mode_device(self, source=None):
+        mode_device = getattr(self, "mode", None)
+        if mode_device is None or mode_device is source:
+            return
+        active_modes_signal = getattr(mode_device, "active_modes", None)
+        if active_modes_signal is None:
+            return
+        self._syncing_mode_device = True
+        try:
+            active_modes_signal.put(self.active_modes)
+        finally:
+            self._syncing_mode_device = False
+
+    def _reconcile_mode_devices(self, namespace=None):
         all_devices = set(self.devices.keys())
-        devices_to_defer = set()
+        mode_devices = set()
         devices_to_load = set()
-        for mode, mode_devices in self.modes.items():
-            if mode in modes:
-                devices_to_load.update(mode_devices)
-            else:
-                devices_to_defer.update(mode_devices)
-        devices_to_defer.difference_update(devices_to_load)
-        devices_to_defer &= all_devices
+        for mode, devices in self.modes.items():
+            mode_devices.update(devices)
+            if mode in self.active_modes:
+                devices_to_load.update(devices)
+
+        devices_to_defer = (mode_devices & all_devices) - devices_to_load
         devices_to_load.difference_update(all_devices)
 
         for device_name in devices_to_defer:
             self.defer_device(device_name)
         for device_name in devices_to_load:
-            # print(f"Loading deferred device {device_name}")
             self.load_deferred_device(device_name, namespace=namespace)
 
-    def deactivate_mode_devices(self, modes):
-        if not isinstance(modes, (list, tuple)):
-            modes = [modes]
-        devices_to_defer = set()
-        for mode in modes:
-            if mode in self.modes:
-                for device_name in self.modes[mode]:
-                    devices_to_defer.add(device_name)
-        for device_name in devices_to_defer:
-            self.defer_device(device_name)
+    def activate_mode_devices(self, modes, namespace=None):
+        self.set_active_modes(modes, namespace=namespace, run_hooks=False)
+
+    def deactivate_mode_devices(self, modes, namespace=None):
+        modes = self._normalize_modes(modes)
+        active_modes = [mode for mode in self.active_modes if mode not in modes]
+        self._set_active_modes(active_modes)
+        self._reconcile_mode_devices(namespace=namespace)
 
     def load_deferred_device(self, device_name, namespace=None):
         """
@@ -445,11 +600,19 @@ class BeamlineModel:
         self._deferred_devices = set()
         self._mode_activation_functions = {}
         self._mode_deactivation_functions = {}
+        self._active_modes_use_redis = False
+        self._mode_device = None
+        self._mode_namespace = None
+        self._syncing_mode_device = False
 
         self.groups = list(self.default_groups)
         self.roles = list(self.default_roles)
 
         self.modes = {}
+        self.active_modes = GLOBAL_USER_STATUS.request_status_list(
+            self.active_modes_key, use_redis=False
+        )
+        self._set_active_modes(self.default_active_modes)
         if hasattr(self, "samples"):
             delattr(self, "samples")
         if hasattr(self, "current_sample"):
