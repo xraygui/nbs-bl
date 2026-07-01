@@ -16,6 +16,7 @@ from .plan_stubs import (
 from bluesky.plan_stubs import mv, trigger_and_read, declare_stream
 from bluesky.utils import separate_devices
 from bluesky.preprocessors import stage_wrapper, plan_mutator, set_run_key_wrapper
+from ophyd.positioner import PositionerBase
 from .preprocessors import wrap_metadata, plan_status_decorator
 from .suspenders import dynamic_suspenders
 from .groups import repeat
@@ -295,6 +296,24 @@ def _nbs_setup_detectors(func):
 
     return _inner
 
+def _set_settling_time(func):
+    @merge_func(func)
+    def _inner(*args, settle_time: Optional[float] = None, **kwargs):
+        if settle_time is not None:
+            settle_time_motors = []
+            for arg in args:
+                if isinstance(arg, PositionerBase):
+                    old_settle_time = arg.settle_time
+                    arg.settle_time = settle_time
+                    settle_time_motors.append((arg, old_settle_time))
+
+            ret = yield from func(*args, **kwargs)
+            for motor, old_settle_time in settle_time_motors:
+                motor.settle_time = old_settle_time
+            return ret
+        else:
+            return (yield from func(*args, **kwargs))
+    return _inner
 
 def _nbs_add_plot_md(func):
     @merge_func(func)
@@ -373,6 +392,7 @@ def nbs_base_scan_decorator(func):
     @plan_status_decorator
     @_nbs_add_plan_args
     @_beamline_setup
+    @_set_settling_time
     @_nbs_setup_detectors
     @_nbs_add_sample_md
     @_nbs_add_plot_md

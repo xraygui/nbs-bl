@@ -94,9 +94,9 @@ def fly_scan(
     stop : float
         Ending position of the scan
     *args : float, optional
-        Additional scan parameters in groups of 3: start, stop, speed.
+        Additional scan parameters in groups of 2: stop, speed.
         For example:
-        start1, stop1, speed1[, start2, stop2, speed2, ...]
+        start1, stop1, speed1[, stop2, speed2, ...]
         This allows for multiple trajectory segments in a single scan
     md : dict, optional
         Metadata dictionary to be included with the scan
@@ -124,7 +124,7 @@ def fly_scan(
     >>> fly_scan([det], motor, 0, 10)
 
     # Multi-segment scan with different speeds
-    >>> fly_scan([det], motor, 0, 10, 2, 10, 20, 5)
+    >>> fly_scan([det], motor, 0, 10, 2, 20, 5)
     # This will scan from 0->10 at speed 2, then 10->20 at speed 5
     """
 

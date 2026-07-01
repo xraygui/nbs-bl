@@ -1,4 +1,5 @@
 import numpy as np
+from numbers import Number
 from .scan_base import _make_gscan_points
 
 """
@@ -135,21 +136,38 @@ def list_grid_scan_estimate(plan_name, plan_args, estimation_dict):
     return a + b * n_points + c * n_points
 
 
+def _fly_scan_segments(plan_args):
+    if "args" in plan_args:
+        args = list(plan_args["args"])
+        if args and not isinstance(args[0], Number):
+            args = args[1:]
+    else:
+        return [(plan_args.get("start", 0), plan_args.get("stop", 0), plan_args.get("speed", 1))]
+
+    if len(args) < 3:
+        return None
+
+    if len(args) % 3 == 0:
+        return [tuple(args[i : i + 3]) for i in range(0, len(args), 3)]
+
+    if (len(args) - 3) % 2 == 0:
+        segments = [tuple(args[:3])]
+        start = args[1]
+        for stop, speed in zip(args[3::2], args[4::2]):
+            segments.append((start, stop, speed))
+            start = stop
+        return segments
+
+    return None
+
+
 @with_repeat
 def fly_scan_estimate(plan_name, plan_args, estimation_dict):
-    if "args" in plan_args:
-        args = plan_args["args"]
-        if len(args) % 2 == 0:
-            args = args[1:]
-        start = args[0]
-        stop = args[1]
-        speed = args[2]
-    else:
-        start = plan_args.get("start", 0)
-        stop = plan_args.get("stop", 0)
-        speed = plan_args.get("speed", 1)
+    segments = _fly_scan_segments(plan_args)
+    if segments is None:
+        return None
     a = estimation_dict.get("fixed", 0)
-    return a + np.abs((stop - start) / speed)
+    return a + sum(np.abs((stop - start) / speed) for start, stop, speed in segments)
 
 
 @with_repeat
