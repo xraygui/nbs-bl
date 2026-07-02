@@ -252,33 +252,40 @@ class BeamlineModel:
         self._mode_activation_functions[mode] = activate_function
         self._mode_deactivation_functions[mode] = deactivate_function
         if run_hook and mode in self.active_modes:
-            if self._run_mode_functions(
+            self._reconcile_mode_devices(namespace=namespace)
+            self._run_mode_functions(
                 [mode], self._mode_activation_functions, "activating"
-            ):
-                self._reconcile_mode_devices(namespace=namespace)
+            )
 
     def activate_mode(self, modes, namespace=None):
         modes = self._normalize_modes(modes)
-        if not self._run_mode_functions(
-            modes, self._mode_activation_functions, "activating"
-        ):
-            return False
         active_modes = self._normalize_modes([*self.active_modes, *modes])
         self._set_active_modes(active_modes)
+        # Activate devices before running activation hooks
         self._reconcile_mode_devices(namespace=namespace)
+        mode_activation_success = self._run_mode_functions(
+            modes, self._mode_activation_functions, "activating"
+        )
+        if not mode_activation_success:
+            self.deactivate_mode(modes)
+            return False
+
         return True
 
     def deactivate_mode(self, modes, namespace=None):
         modes = self._normalize_modes(modes)
-        if not self._run_mode_functions(
+        # Perform teardown before unloading devices
+        mode_deactivation_success = self._run_mode_functions(
             modes, self._mode_deactivation_functions, "deactivating"
-        ):
-            return False
+        )
 
         active_modes = [mode for mode in self.active_modes if mode not in modes]
+
+        # Unload devices even if teardown fails
         self._set_active_modes(active_modes)
         self._reconcile_mode_devices(namespace=namespace)
-        return True
+
+        return mode_deactivation_success
 
     def set_active_modes(self, modes, namespace=None, run_hooks=True, source=None):
         """
@@ -441,15 +448,6 @@ class BeamlineModel:
             self.defer_device(device_name)
         for device_name in devices_to_load:
             self.load_deferred_device(device_name, namespace=namespace)
-
-    def activate_mode_devices(self, modes, namespace=None):
-        self.set_active_modes(modes, namespace=namespace, run_hooks=False)
-
-    def deactivate_mode_devices(self, modes, namespace=None):
-        modes = self._normalize_modes(modes)
-        active_modes = [mode for mode in self.active_modes if mode not in modes]
-        self._set_active_modes(active_modes)
-        self._reconcile_mode_devices(namespace=namespace)
 
     def load_deferred_device(self, device_name, namespace=None):
         """
