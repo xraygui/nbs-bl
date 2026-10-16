@@ -29,7 +29,8 @@ def publish_to_tiled(run_engine, config, print_substep=print):
         callback = client.post_document
     elif subscribe_method == "tiled_writer":
         from bluesky_tiled_plugins import TiledWriter
-        callback = TiledWriter(client)
+        print_substep("publish_to_tiled: validate=False")
+        callback = TiledWriter(client, validate=False)
     else:
         raise ValueError(f"Invalid subscribe method: {subscribe_method}")
     run_engine.subscribe(callback)

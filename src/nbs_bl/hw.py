@@ -5,6 +5,8 @@ from nbs_core.autoload import instantiateOphyd, _find_deferred_devices, getMaxLo
 
 
 def loadDevices(device_config, namespace=None, mode=None):
+    device_config = _apply_mode_deferred_config(device_config, mode)
+    mode = None
     max_load_pass = getMaxLoadPass(device_config)
 
     all_devices = {}
@@ -58,6 +60,32 @@ def loadDevices(device_config, namespace=None, mode=None):
         device_dict[device_name] = dinfo
 
     return device_dict
+
+
+def _apply_mode_deferred_config(device_config, mode):
+    if mode is None:
+        return device_config
+
+    active_modes = _normalize_modes(mode)
+    filtered_config = {}
+    for device_name, config in device_config.items():
+        if not isinstance(config, dict):
+            filtered_config[device_name] = config
+            continue
+
+        device_modes = _normalize_modes(config.get("_modes", []))
+        if device_modes and not set(device_modes).intersection(active_modes):
+            config = dict(config)
+            config["_defer_loading"] = True
+        filtered_config[device_name] = config
+    return filtered_config
+
+
+def _normalize_modes(mode):
+    if isinstance(mode, (list, tuple, set)):
+        return list(mode)
+    return [mode]
+
 
 def loadFromConfig(
     config,

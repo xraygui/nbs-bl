@@ -119,24 +119,66 @@ class GlobalStatusManager:
         When using Redis, the list is stored in a RedisStatusDict using the global prefix,
         with the provided key used as the dictionary key for the list.
         """
+        status_list = self._status_dict.get(key, None)
+        if status_list is not None and not isinstance(status_list, StatusList):
+            raise TypeError(f"Status key {key} already exists and is not a StatusList")
+
         if use_redis:
             if self._redis_client is None:
                 import warnings
 
                 warnings.warn(f"Redis not initialized. Using plain StatusList for {key} instead.")
-                status_list = StatusList()
+                status_list = status_list or StatusList()
             else:
-                # Create or get the Redis dict with only global prefix
                 redis_dict = self._get_or_create_redis_dict()
-                # Create new status list
-                status_list = StatusList()
-                # Store in Redis dict under the given key
-                redis_dict[key] = status_list
+                if key in redis_dict:
+                    values = redis_dict.get(key, []) or []
+                    if isinstance(values, str):
+                        values = [values]
+                else:
+                    values = list(status_list) if status_list is not None else []
+                    redis_dict[key] = values
+                if status_list is None:
+                    status_list = StatusList(values)
+                else:
+                    status_list.clear()
+                    status_list.extend(values)
         else:
-            status_list = StatusList()
+            status_list = status_list or StatusList()
 
-        # Add to status manager
         self.add_status(key, status_list)
+        return status_list
+
+    def set_status_list(self, key, values, use_redis=False):
+        """
+        Replace a status list with new values.
+
+        Parameters
+        ----------
+        key : str
+            Key for the status list.
+        values : iterable
+            Values to store in the status list.
+        use_redis : bool, optional
+            If True, also write the full list value to Redis.
+
+        Returns
+        -------
+        StatusList
+            The updated status list.
+        """
+        status_list = self._status_dict.get(key, None)
+        if status_list is not None and not isinstance(status_list, StatusList):
+            raise TypeError(f"Status key {key} already exists and is not a StatusList")
+        status_list = status_list or StatusList()
+        if isinstance(values, str):
+            values = [values]
+        status_list.clear()
+        status_list.extend(list(values))
+        self.add_status(key, status_list)
+        if use_redis and self._redis_client is not None:
+            redis_dict = self._get_or_create_redis_dict()
+            redis_dict[key] = list(status_list)
         return status_list
 
     def _get_or_create_redis_dict(self):

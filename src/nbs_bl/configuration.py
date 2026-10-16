@@ -253,6 +253,7 @@ class InitializeRedisStep(InitializationStep):
 
         if redis_settings:
             GLOBAL_USER_STATUS.init_redis(redis_settings)
+            beamline.initialize_active_modes(use_redis=True)
 
             tmp_settings = GLOBAL_USER_STATUS.request_status_dict(
                 "SETTINGS", use_redis=True
@@ -385,7 +386,7 @@ class LoadDevicesStep(InitializationStep):
         beamline._initialize_groups()
         ns = context.get("namespace")
         # Move all of this to a helper function in hw.py
-        devices = loadDevices(device_config, ns, mode="default")
+        devices = loadDevices(device_config, ns, mode=beamline.active_modes)
 
         for device_name, device_info in devices.items():
             beamline.add_device(device_name, device_info)
@@ -406,7 +407,7 @@ class SetupSpecialDevicesStep(InitializationStep):
         return [LoadDevicesStep]
 
     def execute(self, beamline: BeamlineModel, context: dict) -> dict:
-        beamline.handle_special_devices()
+        beamline.handle_special_devices(namespace=context.get("namespace"))
 
         return context
 
