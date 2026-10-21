@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 import csv
+import numpy as np
+from nbs_bl.geometry.linalg import constructBasis
 
 
 class GeometryBase(ABC):
@@ -42,6 +44,15 @@ class GeometryBase(ABC):
     def attach_manipulator(self, manipframe):
         self.manip_frame = manipframe
         self.generate_geometry()
+
+    def shift_position(self, position, dx=0, dy=0, dz=0):
+        """
+        Return a copy of a sample position moved by (dx, dy, dz) in the
+        sample frame (x along the surface, y along the bar, z the normal).
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} cannot shift sample positions"
+        )
 
     def read_sample_file(self, filename):
         extension = filename.split(".")[-1]
@@ -117,6 +128,39 @@ class Standard4SidedBar(GeometryBase):
             self.bar_frame.make_child_frame(*axes, origin=origin)
             for axes, origin in zip(side_axes, side_origins)
         ]
+
+    def update_side(self, side_index, p1, p2, p3):
+        """
+        Replace a side's frame with one built from three calibrated points.
+
+        Samples on the side are child frames, so they move with it.
+
+        Parameters
+        ----------
+        side_index : int
+            Zero-indexed side number (side1 is 0).
+        p1, p2, p3 : array-like
+            Points in manipulator coordinates at r=0, i.e. the (x, y, z)
+            motor position that puts each point in the beam (relative to the
+            rotation center in x and y). p1 is the side origin (the corner
+            at the end of the bar), p2 is further along the bar (+y), and
+            p3 is along the surface (+x) from p1.
+        """
+        p1, p2, p3 = (np.asarray(p, dtype=float) for p in (p1, p2, p3))
+        n1, n2, n3 = constructBasis(p1, p2, p3)
+        # The bar frame is the side frames' parent, so express the new
+        # origin and axes in bar coordinates.
+        bar = self.bar_frame
+        origin = bar.from_global(p1)
+        axes = [bar.from_global(p1 + n) - origin for n in (n1, n2, n3)]
+        self.side_frames[side_index].update(*axes, origin=origin)
+
+    def shift_position(self, position, dx=0, dy=0, dz=0):
+        x1, y1, x2, y2 = (float(c) for c in position.get("coordinates"))
+        new_position = dict(position)
+        new_position["coordinates"] = (x1 + dx, y1 + dy, x2 + dx, y2 + dy)
+        new_position["thickness"] = float(position.get("thickness", 0)) + dz
+        return new_position
 
     def get_geometry(self):
         # Implement the method here

@@ -85,6 +85,39 @@ class SampleHolderBase(Device):
         }
         self.sample_frames[id] = sample_frame
 
+    def shift_sample(self, sample_id, dx=0, dy=0, dz=0):
+        """
+        Correct a sample's stored position by (dx, dy, dz) in its own frame.
+
+        Use this when a measurement (e.g. an edge scan) shows a sample is not
+        where the sample file says. For a bar, x is along the surface, y is
+        along the bar, and z is the surface normal (the thickness).
+
+        Parameters
+        ----------
+        sample_id : str
+            The sample to correct.
+        dx, dy, dz : float
+            How far the sample really is from its stored position, in mm.
+        """
+        sample = copy.deepcopy(self.samples[sample_id])
+        position = sample["position"]
+        if sample.get("origin") == "absolute":
+            coordinates = list(position["coordinates"])
+            for i, d in enumerate((dx, dy, dz)[: len(coordinates)]):
+                coordinates[i] += d
+            position = {**position, "coordinates": coordinates}
+            frame = position
+        else:
+            position = self.holder.shift_position(position, dx=dx, dy=dy, dz=dz)
+            frame = self.holder.make_sample_frame(position)
+        sample["position"] = position
+        # Assign the whole entry so Redis-backed sample dicts save it.
+        self.samples[sample_id] = sample
+        self.sample_frames[sample_id] = frame
+        if self.current_sample.get("sample_id") == sample_id:
+            self.set_sample(sample_id)
+
     def remove_sample(self, sample_id):
         self.samples.pop(sample_id, None)
         self.sample_frames.pop(sample_id, None)
@@ -238,6 +271,21 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
         self.ax1 = (rotation_ax + 1) % 3
         self.ax2 = (rotation_ax + 2) % 3
         self.default_coords = [0, 0, 0, 45]
+        # Where the rotation axis crosses the beam, in motor coordinates.
+        # Only the two components perpendicular to the rotation axis are used.
+        self.rotation_center = np.zeros(3)
+
+    def set_rotation_center(self, *center):
+        """
+        Set the motor position (x, y, z) at which the rotation axis is in the beam.
+
+        Only the components perpendicular to the rotation axis matter. Sample
+        positions at r=0 don't change; rotations now pivot about this point.
+        """
+        c = np.zeros(3)
+        c[: len(center)] = center
+        c[self.rotation_ax] = 0
+        self.rotation_center = c
 
     @pseudo_position_argument
     def forward(self, pp):
@@ -261,8 +309,15 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
             )
 
             r = self.sample_rotation_to_manip_rotation(r)
-            x, y, z = self.manip_frame.rotate_in_plane(
-                (xp, yp, zp), r * np.pi / 180.0, ax1=self.ax1, ax2=self.ax2
+            c = self.rotation_center
+            x, y, z = (
+                self.manip_frame.rotate_in_plane(
+                    np.array((xp, yp, zp)) - c,
+                    r * np.pi / 180.0,
+                    ax1=self.ax1,
+                    ax2=self.ax2,
+                )
+                + c
             )
         else:
             # If current_frame is a coordinate dict, add its values to sample_coords
@@ -289,8 +344,15 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
 
         if isinstance(self.current_frame, Frame):
             r = self.manip_rotation_to_sample_rotation(rp[-1])
-            xp, yp, zp = self.manip_frame.rotate_in_plane(
-                real_coords, -rp[-1] * np.pi / 180.0, ax1=self.ax1, ax2=self.ax2
+            c = self.rotation_center
+            xp, yp, zp = (
+                self.manip_frame.rotate_in_plane(
+                    np.array(real_coords) - c,
+                    -rp[-1] * np.pi / 180.0,
+                    ax1=self.ax1,
+                    ax2=self.ax2,
+                )
+                + c
             )
             # If current_frame is a Frame object, use the existing conversion
             x, y, z = self.manip_frame.to_frame((xp, yp, zp), self.current_frame)
@@ -327,6 +389,31 @@ class Manipulator4AxBase(PseudoPositioner, SampleHolderBase):
         if "r" in positions:
             position[3] = positions["r"]
         return position
+
+    def recenter_sample_here(self, sample_id=None):
+        """
+        Make the current beam position the center of a sample.
+
+        Move the beam onto the true sample center (e.g. found by an edge
+        scan) first. The sample's stored position is shifted by the current
+        sx, sy offset, so afterwards this spot reads sx = sy = 0.
+
+        Parameters
+        ----------
+        sample_id : str, optional
+            The sample to correct. Defaults to the current sample.
+        """
+        if sample_id is None:
+            sample_id = self.current_sample.get("sample_id")
+        if sample_id not in self.samples:
+            raise KeyError(f"Sample ID {sample_id} not found in samples")
+        previous = self.current_sample.get("sample_id")
+        self.set_sample(sample_id)
+        sx, sy, _, _ = (float(v) for v in self.inverse(self.real_position))
+        self.shift_sample(sample_id, dx=sx, dy=sy)
+        if previous is not None and previous != sample_id:
+            self.set_sample(previous)
+        return sx, sy
 
     def sample_rotation_to_manip_rotation(self, r):
         # Assumes that z-axis is the surface normal!!

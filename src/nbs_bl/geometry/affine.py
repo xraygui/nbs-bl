@@ -47,6 +47,9 @@ class Frame:
         else:
             self.parent = NullFrame(self.dim)
 
+        self._update_matrix()
+
+    def _update_matrix(self):
         if len(self.origin) != self.dim:
             raise ValueError("Origin must have same dimension as axes")
 
@@ -60,6 +63,26 @@ class Frame:
             [axis.coords for axis in self.axes] + [np.append(self.origin, 1)]
         )
         self.Ainv = np.linalg.inv(self.A)
+
+    def update(self, *axes, origin=None):
+        """
+        Change the frame's axes and/or origin in place.
+
+        Child frames keep a reference to this frame, so they move with it.
+        This is how a calibration updates every sample on a side at once.
+
+        Parameters
+        ----------
+        *axes : tuple or Axis, optional
+            New axes in parent coordinates. If omitted, the axes are kept.
+        origin : array-like, optional
+            New origin in parent coordinates. If omitted, the origin is kept.
+        """
+        if axes:
+            self.axes = tuple(self._ensure_axis(ax) for ax in axes)
+        if origin is not None:
+            self.origin = np.array(origin, dtype=float)
+        self._update_matrix()
 
     @staticmethod
     def _ensure_axis(ax):
