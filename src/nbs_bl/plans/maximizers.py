@@ -278,7 +278,7 @@ def find_max_deriv(plan, dets, *args, max_channel=None):
 
 def halfmax_position(x, y, band=(0.2, 0.8)):
     """
-    Find where y first rises through the middle of its range.
+    Find where y crosses the middle of its range, on a rising or falling edge.
 
     Rather than taking the first point above half max, fit a line to the
     rising edge around the crossing and solve it for the half-max value, so
@@ -289,7 +289,7 @@ def halfmax_position(x, y, band=(0.2, 0.8)):
     x : array-like
         Motor positions, in scan order.
     y : array-like
-        Detector values, going from low to high.
+        Detector values, going from low to high or from high to low.
     band : tuple of float
         Fraction of the (min, max) range that counts as the edge. Points on
         either side of the crossing within this band are used in the fit.
@@ -301,6 +301,9 @@ def halfmax_position(x, y, band=(0.2, 0.8)):
     """
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)
+    if y[-1] < y[0]:
+        # A falling edge is a rising edge read backwards
+        x, y = x[::-1], y[::-1]
     lo, hi = np.min(y), np.max(y)
     half = 0.5 * (lo + hi)
     above = np.nonzero(y > half)[0]
@@ -329,7 +332,7 @@ def halfmax_position(x, y, band=(0.2, 0.8)):
 
 def find_halfmax(plan, dets, *args, max_channel=None, **kwargs):
     """
-    For a plan and detector that goes from low to high, find
+    For a plan whose detector goes from low to high (or high to low), find
     the motor value where the detector is halfway between its minimum
     and maximum value, interpolated with halfmax_position
     """

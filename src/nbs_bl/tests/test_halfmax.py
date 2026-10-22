@@ -42,3 +42,22 @@ def test_halfmax_step_edge():
     x = np.array([0.0, 1.0, 2.0, 3.0])
     y = np.array([0.0, 0.0, 10.0, 10.0])
     assert abs(halfmax_position(x, y) - 1.5) < 1e-9
+
+
+def test_halfmax_falling_edge():
+    x = np.linspace(-10.25, -14.25, 29)
+    y = edge(x, -12.25)
+    assert abs(halfmax_position(x, y) - -12.25) < 0.01
+
+
+def test_halfmax_two_way_average_cancels_lag():
+    # Readings paired with a position from `lag` earlier shift each edge in
+    # the direction of travel; flying both ways and averaging cancels it.
+    lag = 0.07
+    up = np.linspace(-14.25, -10.25, 29)
+    down = up[::-1]
+    found_up = halfmax_position(up, edge(up - lag, -12.25))
+    found_down = halfmax_position(down, edge(down + lag, -12.25))
+    assert abs(found_up - -12.18) < 0.01
+    assert abs(found_down - -12.32) < 0.01
+    assert abs(0.5 * (found_up + found_down) - -12.25) < 0.01
