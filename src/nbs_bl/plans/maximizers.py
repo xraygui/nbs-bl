@@ -276,11 +276,62 @@ def find_max_deriv(plan, dets, *args, max_channel=None):
     return (yield from inner_maximizer())
 
 
+def halfmax_position(x, y, band=(0.2, 0.8)):
+    """
+    Find where y first rises through the middle of its range.
+
+    Rather than taking the first point above half max, fit a line to the
+    rising edge around the crossing and solve it for the half-max value, so
+    the result is not limited to the point spacing.
+
+    Parameters
+    ----------
+    x : array-like
+        Motor positions, in scan order.
+    y : array-like
+        Detector values, going from low to high.
+    band : tuple of float
+        Fraction of the (min, max) range that counts as the edge. Points on
+        either side of the crossing within this band are used in the fit.
+
+    Returns
+    -------
+    float
+        Interpolated motor position of the half-max crossing.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    lo, hi = np.min(y), np.max(y)
+    half = 0.5 * (lo + hi)
+    above = np.nonzero(y > half)[0]
+    if len(above) == 0 or above[0] == 0 or hi == lo:
+        return float(x[above[0]] if len(above) else x[0])
+    i = above[0]
+    frac = (y - lo) / (hi - lo)
+
+    def in_band(j):
+        return band[0] < frac[j] < band[1]
+
+    # Always use the two points that bracket the crossing, then extend
+    # outwards through neighbours that are still on the edge.
+    j0, j1 = i - 1, i
+    while j0 > 0 and in_band(j0 - 1):
+        j0 -= 1
+    while j1 < len(y) - 1 and in_band(j1 + 1):
+        j1 += 1
+    xs, ys = x[j0 : j1 + 1], y[j0 : j1 + 1]
+    slope, intercept = np.polyfit(xs, ys, 1)
+    if slope == 0:
+        return float(x[i])
+    xh = (half - intercept) / slope
+    return float(np.clip(xh, xs.min(), xs.max()))
+
+
 def find_halfmax(plan, dets, *args, max_channel=None, **kwargs):
     """
     For a plan and detector that goes from low to high, find
-    the motor value where the detector is half of the maximum
-    value
+    the motor value where the detector is halfway between its minimum
+    and maximum value, interpolated with halfmax_position
     """
     dc = DocumentCache()
 
@@ -295,16 +346,9 @@ def find_halfmax(plan, dets, *args, max_channel=None, **kwargs):
             detname = dets[0].name
         else:
             detname = max_channel
-        max_val = float(table[detname].max())
-        halftable = table[detname] - max_val / 2.0
-        half_idx = 0
-        for n, v in enumerate(halftable.data):
-            if v > 0:
-                half_idx = n
-                break
         ret = []
         for m in motors:
-            mot_val = float(table[m.name][half_idx])
+            mot_val = halfmax_position(table[m.name].data, table[detname].data)
             print(f"setting {m.name} to {mot_val}")
             ret.append([m, mot_val])
             yield from mv(m, mot_val)
