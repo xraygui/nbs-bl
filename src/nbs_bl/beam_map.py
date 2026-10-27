@@ -1,51 +1,56 @@
 """
-Beamline map backed by the map IOC's status PVs.
+Beamline map as ophyd devices, backed by the map IOC's status PVs.
 
-The map file (``beam_map.toml`` by default) is shared with the map IOC in
-nbs-sim (``nbs-map-ioc``), which watches the shutters, motors and other PVs
-named in its conditions and serves four read-only status PVs per node. This
-module reads the file only for the node structure and subscribes to those
-status PVs. It never reads the conditions or the PVs they name.
+The map file (e.g. ``beam_map.toml``) is shared with the map IOC in nbs-sim
+(``nbs-map-ioc``), which watches the shutters, motors and other PVs named in
+its conditions and serves four read-only status PVs per node. Here the file
+is read only for the node structure: each node becomes a ``MapNode`` device
+with those four status signals, and the whole map a ``BeamMap`` device. The
+conditions and the PVs they name are never read.
 
-The ``endstation`` setting (beamline.toml) names the node whose beam this
-beamline cares about. ``beam_expected()`` and ``why_no_beam()`` answer for
-it, and ``publish`` keeps a JSON-able copy of the tree and every node's
-status in a status dict (``BEAM_MAP``) for clients without EPICS access.
+Load it from devices.toml::
+
+    [beam_map]
+    _target = "nbs_bl.beam_map.BeamMapFactory"
+    _role = "beam_map"
+    map_file = "beam_map.toml"
+    endstation = "es_chamber"
+
+``endstation`` names the node whose beam this beamline cares about.
+``beam_expected()`` and ``why_no_beam()`` answer for it, and ``publish``
+keeps a JSON-able copy of the tree and every node's status in a status dict
+(``BEAM_MAP``) for clients without EPICS access.
 """
 
+import re
 from datetime import datetime
+from os.path import isabs, join
 
-from ophyd import EpicsSignalRO
+from ophyd import Component as Cpt
+from ophyd import Device, EpicsSignalRO
 
 try:
     import tomllib
 except ModuleNotFoundError:
     import tomli as tomllib
 
-
 FIELDS = ("blocking", "path_clear", "beam_expected", "reason")
 
 
-class MapNode:
-    """One node of the beamline map and its status signals."""
+class MapNode(Device):
+    """One node of the beamline map: its four status PVs."""
 
-    def __init__(self, name, prefix, upstream=None, desc="", signal_class=EpicsSignalRO):
-        self.name = name
+    blocking = Cpt(EpicsSignalRO, "Blocking")
+    path_clear = Cpt(EpicsSignalRO, "PathClear")
+    beam_expected = Cpt(EpicsSignalRO, "BeamExpected")
+    reason = Cpt(EpicsSignalRO, "Reason", string=True)
+
+    def __init__(self, *args, upstream=None, desc="", node_name=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.node_name = node_name
         self.upstream = upstream
         self.desc = desc
         self.children = []
-        base = f"{prefix}{name}:"
-        sig_name = f"beam_map_{name}"
-        self.blocking = signal_class(base + "Blocking", name=f"{sig_name}_blocking")
-        self.path_clear = signal_class(
-            base + "PathClear", name=f"{sig_name}_path_clear"
-        )
-        self.beam_expected = signal_class(
-            base + "BeamExpected", name=f"{sig_name}_beam_expected"
-        )
-        self.reason = signal_class(
-            base + "Reason", name=f"{sig_name}_reason", string=True
-        )
 
     def status(self):
         """Read the node's four status PVs."""
@@ -57,13 +62,87 @@ class MapNode:
         }
 
 
-class BeamMap:
-    """The node tree of a beamline map."""
+def read_map_file(path):
+    """
+    Read the structure of a map file: its name, prefix and nodes.
 
-    def __init__(self, name, prefix, nodes, endstation=None):
-        self.name = name
-        self.prefix = prefix
-        self.nodes = nodes
+    Returns
+    -------
+    dict
+        ``name``, ``prefix`` and ``nodes`` (node name to ``upstream`` and
+        ``desc``), in file order.
+    """
+    with open(path, "rb") as f:
+        data = tomllib.load(f)
+    meta = data.get("map", {})
+    specs = data.get("nodes", {})
+    for name, spec in specs.items():
+        up = spec.get("upstream")
+        if up is not None and up not in specs:
+            raise ValueError(f"node {name}: upstream {up!r} is not a node")
+    for name in specs:
+        seen = {name}
+        up = specs[name].get("upstream")
+        while up is not None:
+            if up in seen:
+                raise ValueError(f"node {name}: upstream chain has a cycle")
+            seen.add(up)
+            up = specs[up].get("upstream")
+    nodes = {
+        name: {"upstream": spec.get("upstream"), "desc": spec.get("desc", "")}
+        for name, spec in specs.items()
+    }
+    return {"name": meta.get("name", ""), "prefix": meta.get("prefix", ""), "nodes": nodes}
+
+
+def _attr_name(node, taken):
+    """A Python attribute name for ``node``; the PV name keeps the node name."""
+    attr = re.sub(r"\W", "_", node)
+    if not attr or attr[0].isdigit() or hasattr(BeamMap, attr):
+        attr = f"node_{attr}"
+    while attr in taken:
+        attr += "_"
+    return attr
+
+
+def beam_map_class(spec):
+    """Build a BeamMap subclass with one MapNode component per node of ``spec``."""
+    attrs = {}
+    for node, info in spec["nodes"].items():
+        attr = _attr_name(node, attrs)
+        attrs[attr] = Cpt(
+            MapNode,
+            f"{node}:",
+            upstream=info["upstream"],
+            desc=info["desc"],
+            node_name=node,
+        )
+    cls_name = "BeamMap_" + (re.sub(r"\W", "_", spec["name"]) or "map")
+    return type(cls_name, (BeamMap,), attrs)
+
+
+class BeamMap(Device):
+    """
+    The beamline map: a MapNode device per node, plus the node tree.
+
+    Built by ``beam_map_class``; use ``BeamMapFactory`` to load one from a
+    map file.
+    """
+
+    def __init__(self, *args, map_spec, endstation=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.map_name = map_spec["name"]
+        self.nodes = {}
+        for attr in self.component_names:
+            node = getattr(self, attr)
+            if isinstance(node, MapNode):
+                self.nodes[node.node_name] = node
+        for node in self.nodes.values():
+            if node.upstream is not None:
+                self.nodes[node.upstream].children.append(node.node_name)
+        if endstation is not None and endstation not in self.nodes:
+            print(f"Beam map: endstation {endstation!r} is not a node, ignoring it")
+            endstation = None
         self.endstation = endstation
         self._published = None
         self._status = {}
@@ -74,7 +153,7 @@ class BeamMap:
     def _node(self, node):
         node = node or self.endstation
         if node is None:
-            raise ValueError("No node given and no endstation set in beamline.toml")
+            raise ValueError("No node given and no endstation set for the beam map")
         return self.nodes[node]
 
     def status(self, node=None):
@@ -90,7 +169,7 @@ class BeamMap:
 
     def beam_status(self, node=None):
         """Beam expected and the reason, for ``node`` (default: the endstation)."""
-        name = self._node(node).name
+        name = self._node(node).node_name
         return {
             "endstation": name,
             "beam_expected": self.beam_expected(name),
@@ -101,10 +180,19 @@ class BeamMap:
         """The tree and the last known status of every node, JSON-able."""
         nodes = {}
         for name, node in self.nodes.items():
-            entry = {"upstream": node.upstream, "children": list(node.children), "desc": node.desc}
+            entry = {
+                "upstream": node.upstream,
+                "children": list(node.children),
+                "desc": node.desc,
+            }
             entry.update(self._status.get(name, dict.fromkeys(FIELDS)))
             nodes[name] = entry
-        out = {"name": self.name, "prefix": self.prefix, "endstation": self.endstation, "nodes": nodes}
+        out = {
+            "name": self.map_name,
+            "prefix": self.prefix,
+            "endstation": self.endstation,
+            "nodes": nodes,
+        }
         es = nodes.get(self.endstation, {})
         out["beam_expected"] = es.get("beam_expected")
         out["reason"] = es.get("reason")
@@ -139,45 +227,32 @@ class BeamMap:
         self._published.update(data)
 
 
-def load_beam_map(path, prefix=None, endstation=None, signal_class=EpicsSignalRO):
+def BeamMapFactory(map_file, *, name="beam_map", prefix=None, endstation=None, **kwargs):
     """
-    Build the node tree from the map file at ``path``.
+    Load a BeamMap device from a map file.
 
-    ``endstation`` names the node the status functions answer for. A name
-    that isn't a node is reported and ignored.
+    Parameters
+    ----------
+    map_file : str
+        Path to the map file. A relative path is taken from the startup
+        directory, so a central map can later be given as an absolute path.
+    name : str
+        Device name.
+    prefix : str, optional
+        Status PV prefix; defaults to the map file's ``[map] prefix``.
+    endstation : str, optional
+        Node that ``beam_expected()`` and ``why_no_beam()`` answer for.
     """
-    with open(path, "rb") as f:
-        data = tomllib.load(f)
-    meta = data.get("map", {})
-    prefix = meta.get("prefix", "") if prefix is None else prefix
-    specs = data.get("nodes", {})
+    if not isabs(map_file):
+        from .beamline import GLOBAL_BEAMLINE
 
-    for name, spec in specs.items():
-        up = spec.get("upstream")
-        if up is not None and up not in specs:
-            raise ValueError(f"node {name}: upstream {up!r} is not a node")
-    for name in specs:
-        seen = {name}
-        up = specs[name].get("upstream")
-        while up is not None:
-            if up in seen:
-                raise ValueError(f"node {name}: upstream chain has a cycle")
-            seen.add(up)
-            up = specs[up].get("upstream")
-
-    nodes = {
-        name: MapNode(
-            name, prefix, spec.get("upstream"), spec.get("desc", ""), signal_class
-        )
-        for name, spec in specs.items()
-    }
-    for node in nodes.values():
-        if node.upstream is not None:
-            nodes[node.upstream].children.append(node.name)
-    if endstation is not None and endstation not in nodes:
-        print(f"Beam map: endstation {endstation!r} is not a node, ignoring it")
-        endstation = None
-    return BeamMap(meta.get("name", ""), prefix, nodes, endstation)
+        startup_dir = GLOBAL_BEAMLINE.settings.get("startup_dir")
+        if startup_dir:
+            map_file = join(startup_dir, map_file)
+    spec = read_map_file(map_file)
+    cls = beam_map_class(spec)
+    prefix = spec["prefix"] if prefix is None else prefix
+    return cls(prefix, name=name, map_spec=spec, endstation=endstation, **kwargs)
 
 
 def _current_map():

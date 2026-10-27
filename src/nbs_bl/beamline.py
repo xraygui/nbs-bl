@@ -51,7 +51,6 @@ class BeamlineModel:
         "redis",
         "RE",
         "md",
-        "beam_map",
     ]
 
     def __init__(self, *args, **kwargs):

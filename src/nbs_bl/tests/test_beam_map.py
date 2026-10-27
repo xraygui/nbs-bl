@@ -1,8 +1,10 @@
 from pathlib import Path
 
 import pytest
+from ophyd import Device
+from ophyd.sim import make_fake_device
 
-from nbs_bl.beam_map import load_beam_map
+from nbs_bl.beam_map import BeamMap, BeamMapFactory, MapNode, beam_map_class, read_map_file
 
 EXAMPLE = str(Path(__file__).parent / "beam_map_example.toml")
 
@@ -13,9 +15,31 @@ def write_map(tmp_path, text):
     return str(path)
 
 
-def test_tree():
-    bmap = load_beam_map(EXAMPLE)
-    assert bmap.name == "claude"
+def fake_map(endstation="branch1", prefix=None):
+    """A BeamMap whose status signals are ophyd fakes, all reading beam expected."""
+    spec = read_map_file(EXAMPLE)
+    cls = make_fake_device(beam_map_class(spec))
+    bmap = cls(spec["prefix"] if prefix is None else prefix, name="beam_map",
+               map_spec=spec, endstation=endstation)
+    for node in bmap.nodes.values():
+        node.path_clear.sim_put(1)
+        node.beam_expected.sim_put(1)
+        node.reason.sim_put("")
+    return bmap
+
+
+def real_map(prefix=None):
+    """A BeamMap with real (unconnected) EPICS signals, for PV names."""
+    spec = read_map_file(EXAMPLE)
+    return beam_map_class(spec)(spec["prefix"] if prefix is None else prefix,
+                                name="beam_map", map_spec=spec)
+
+
+def test_is_an_ophyd_device_tree():
+    bmap = fake_map()
+    assert isinstance(bmap, BeamMap) and isinstance(bmap, Device)
+    assert isinstance(bmap.nodes["m1"], MapNode)
+    assert bmap.map_name == "claude"
     assert bmap.roots() == ["front_end"]
     assert bmap.nodes["m1"].children == ["branch1", "branch2"]
     assert bmap.nodes["branch1"].upstream == "m1"
@@ -23,7 +47,7 @@ def test_tree():
 
 
 def test_signal_names():
-    node = load_beam_map(EXAMPLE).nodes["branch2"]
+    node = real_map().nodes["branch2"]
     assert node.blocking.pvname == "NBS_MAP:branch2:Blocking"
     assert node.path_clear.pvname == "NBS_MAP:branch2:PathClear"
     assert node.beam_expected.pvname == "NBS_MAP:branch2:BeamExpected"
@@ -31,12 +55,18 @@ def test_signal_names():
 
 
 def test_prefix_override():
-    bmap = load_beam_map(EXAMPLE, prefix="OTHER:")
-    assert bmap.nodes["m1"].reason.pvname == "OTHER:m1:Reason"
+    assert real_map(prefix="OTHER:").nodes["m1"].reason.pvname == "OTHER:m1:Reason"
+
+
+def test_node_names_that_are_not_identifiers(tmp_path):
+    spec = read_map_file(write_map(tmp_path, '[nodes.front-end]\n[nodes."m1 mirror"]\nupstream = "front-end"\n'))
+    bmap = beam_map_class(spec)("P:", name="bm", map_spec=spec)
+    assert bmap.nodes["m1 mirror"].reason.pvname == "P:m1 mirror:Reason"
+    assert bmap.nodes["front-end"].children == ["m1 mirror"]
 
 
 def test_ignores_conditions():
-    bmap = load_beam_map(EXAMPLE)
+    bmap = real_map()
     names = {
         sig.pvname
         for node in bmap.nodes.values()
@@ -47,77 +77,23 @@ def test_ignores_conditions():
 
 
 def test_rejects_cycle(tmp_path):
-    path = write_map(
-        tmp_path, '[nodes.a]\nupstream = "b"\n[nodes.b]\nupstream = "a"\n'
-    )
+    path = write_map(tmp_path, '[nodes.a]\nupstream = "b"\n[nodes.b]\nupstream = "a"\n')
     with pytest.raises(ValueError, match="cycle"):
-        load_beam_map(path)
+        read_map_file(path)
 
 
 def test_rejects_unknown_upstream(tmp_path):
-    path = write_map(tmp_path, '[nodes.a]\nupstream = "nope"\n')
     with pytest.raises(ValueError, match="nope"):
-        load_beam_map(path)
-
-
-class FakeBeamline:
-    def __init__(self):
-        self.settings = {}
-        self.beam_map = None
-
-
-def test_startup_step_loads_map(tmp_path):
-    from nbs_bl.configuration import LoadBeamMapStep
-
-    (tmp_path / "beam_map.toml").write_text(Path(EXAMPLE).read_text())
-    bl = FakeBeamline()
-    LoadBeamMapStep().execute(bl, {"startup_dir": str(tmp_path)})
-    assert list(bl.beam_map.nodes) == ["front_end", "m1", "branch1", "branch2"]
-
-
-def test_startup_step_skips_missing_and_bad_maps(tmp_path):
-    from nbs_bl.configuration import LoadBeamMapStep
-
-    bl = FakeBeamline()
-    LoadBeamMapStep().execute(bl, {"startup_dir": str(tmp_path)})
-    assert bl.beam_map is None
-    (tmp_path / "beam_map.toml").write_text('[nodes.a]\nupstream = "x"\n')
-    LoadBeamMapStep().execute(bl, {"startup_dir": str(tmp_path)})
-    assert bl.beam_map is None
-
-
-def test_beamline_model_has_no_map_by_default():
-    from nbs_bl.beamline import BeamlineModel
-
-    assert BeamlineModel().beam_map is None
-
-
-# Status functions, with ophyd soft signals standing in for the status PVs.
-
-
-def soft_signal(pvname, name, string=False, **kwargs):
-    from ophyd import Signal
-
-    sig = Signal(name=name, value="" if string else 0)
-    sig.pvname = pvname
-    return sig
-
-
-def soft_map(endstation="branch1"):
-    bmap = load_beam_map(EXAMPLE, signal_class=soft_signal, endstation=endstation)
-    for node in bmap.nodes.values():
-        node.path_clear.put(1)
-        node.beam_expected.put(1)
-    return bmap
+        read_map_file(write_map(tmp_path, '[nodes.a]\nupstream = "nope"\n'))
 
 
 def test_beam_expected_for_endstation():
-    bmap = soft_map()
+    bmap = fake_map()
     assert bmap.endstation == "branch1"
     assert bmap.beam_expected() is True
     assert bmap.why_no_beam() == ""
-    bmap.nodes["branch1"].beam_expected.put(0)
-    bmap.nodes["branch1"].reason.put("front_end blocked: X = 1")
+    bmap.nodes["branch1"].beam_expected.sim_put(0)
+    bmap.nodes["branch1"].reason.sim_put("front_end blocked: X = 1")
     assert bmap.beam_expected() is False
     assert bmap.why_no_beam() == "front_end blocked: X = 1"
     assert bmap.beam_status() == {
@@ -128,21 +104,21 @@ def test_beam_expected_for_endstation():
 
 
 def test_status_functions_take_any_node():
-    bmap = soft_map()
-    bmap.nodes["branch2"].beam_expected.put(0)
+    bmap = fake_map()
+    bmap.nodes["branch2"].beam_expected.sim_put(0)
     assert bmap.beam_expected("branch2") is False
     assert bmap.beam_expected() is True
 
 
 def test_unknown_endstation_is_ignored():
-    bmap = load_beam_map(EXAMPLE, signal_class=soft_signal, endstation="nope")
+    bmap = fake_map(endstation="nope")
     assert bmap.endstation is None
     with pytest.raises(ValueError, match="endstation"):
         bmap.beam_expected()
 
 
 def test_publish_tree_and_live_status():
-    bmap = soft_map()
+    bmap = fake_map()
     out = {}
     bmap.publish(out)
     assert out["endstation"] == "branch1"
@@ -151,20 +127,55 @@ def test_publish_tree_and_live_status():
     assert m1["upstream"] == "front_end"
     assert m1["children"] == ["branch1", "branch2"]
     assert m1["beam_expected"] is True
-    bmap.nodes["branch1"].beam_expected.put(0)
-    bmap.nodes["branch1"].reason.put("branch1 not selected: X = 0")
+    bmap.nodes["branch1"].beam_expected.sim_put(0)
+    bmap.nodes["branch1"].reason.sim_put("branch1 not selected: X = 0")
     assert out["nodes"]["branch1"]["beam_expected"] is False
     assert out["beam_expected"] is False
     assert out["reason"] == "branch1 not selected: X = 0"
 
 
-def test_startup_step_sets_endstation_and_md(tmp_path):
-    from nbs_bl.configuration import LoadBeamMapStep
+def test_factory_resolves_map_file_from_startup_dir(tmp_path, monkeypatch):
+    from nbs_bl.beamline import GLOBAL_BEAMLINE
 
     (tmp_path / "beam_map.toml").write_text(Path(EXAMPLE).read_text())
-    bl = FakeBeamline()
-    bl.settings["endstation"] = "branch2"
-    bl.md = {}
-    LoadBeamMapStep().execute(bl, {"startup_dir": str(tmp_path), "namespace": {}})
-    assert bl.beam_map.endstation == "branch2"
+    monkeypatch.setitem(GLOBAL_BEAMLINE.settings, "startup_dir", str(tmp_path))
+    bmap = BeamMapFactory("beam_map.toml", name="beam_map", endstation="branch2")
+    assert isinstance(bmap, BeamMap)
+    assert bmap.name == "beam_map"
+    assert bmap.endstation == "branch2"
+    assert bmap.nodes["m1"].reason.pvname == "NBS_MAP:m1:Reason"
+    assert BeamMapFactory(EXAMPLE, name="bm2").map_name == "claude"
+
+
+class FakeBeamline:
+    def __init__(self, bmap=None):
+        self.settings = {}
+        self.beam_map = bmap
+        self.md = {}
+
+
+def test_setup_step_sets_md_and_namespace():
+    from nbs_bl.configuration import SetupBeamMapStep
+
+    bl = FakeBeamline(fake_map(endstation="branch2"))
+    ns = {}
+    SetupBeamMapStep().execute(bl, {"startup_dir": ".", "namespace": ns})
+    from nbs_bl.beam_map import beam_expected
+
     assert bl.md["endstation"] == "branch2"
+    assert ns["beam_expected"] is beam_expected
+
+
+def test_setup_step_without_a_map():
+    from nbs_bl.configuration import SetupBeamMapStep
+
+    bl = FakeBeamline()
+    SetupBeamMapStep().execute(bl, {"startup_dir": ".", "namespace": {}})
+    assert bl.md == {}
+
+
+def test_beam_map_role_is_allowed():
+    from nbs_bl.beamline import BeamlineModel
+
+    assert "beam_map" not in BeamlineModel.reserved
+    assert BeamlineModel().beam_map is None

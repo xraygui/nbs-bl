@@ -144,7 +144,6 @@ class LoadSettingsStep(InitializationStep):
             "device_filename": "devices.toml",
             "beamline_filename": "beamline.toml",
             "sim_filename": "sim_conf.toml",
-            "beam_map_filename": "beam_map.toml",
         }
         startup_dir = context["startup_dir"]
         settings_file = join(startup_dir, context.get("beamline_filename", _default_settings["beamline_filename"]))
@@ -413,38 +412,23 @@ class SetupSpecialDevicesStep(InitializationStep):
         return context
 
 
-class LoadBeamMapStep(InitializationStep):
-    """Load the beamline map, whose node status PVs come from nbs-map-ioc"""
+class SetupBeamMapStep(InitializationStep):
+    """Record the beam map endstation, publish BEAM_MAP and add beam helpers"""
 
     @property
     def name(self) -> str:
-        return "Load Beam Map"
+        return "Setup Beam Map"
 
     @property
     def depends_on(self) -> list[type]:
-        return [LoadSettingsStep]
+        return [LoadDevicesStep]
 
     def execute(self, beamline: BeamlineModel, context: dict) -> dict:
-        from .beam_map import load_beam_map
-
-        map_file = join(
-            context["startup_dir"],
-            beamline.settings.get("beam_map_filename", "beam_map.toml"),
-        )
-        if not exists(map_file):
-            self.print_status(f"No beam map at {map_file}, skipping")
+        bmap = getattr(beamline, "beam_map", None)
+        if bmap is None:
             return context
-        try:
-            beamline.beam_map = load_beam_map(
-                map_file, endstation=beamline.settings.get("endstation")
-            )
-        except Exception as e:
-            print(f"  Error loading beam map from {map_file}: {e}")
-            return context
-        bmap = beamline.beam_map
         self.print_substep(
-            f"Loaded {len(bmap.nodes)} nodes from {map_file}, "
-            f"endstation {bmap.endstation}"
+            f"Beam map {bmap.name}: {len(bmap.nodes)} nodes, endstation {bmap.endstation}"
         )
         md = getattr(beamline, "md", None)
         if md is not None and bmap.endstation is not None:
@@ -591,7 +575,7 @@ class BeamlineInitializer:
             InitializeRunEngineStep(),
             LoadDevicesStep(),
             SetupSpecialDevicesStep(),
-            LoadBeamMapStep(),
+            SetupBeamMapStep(),
             UserStartupHook(),
             LoadPlansStep(),
             InitializeGlobalNamespaceStep(),
