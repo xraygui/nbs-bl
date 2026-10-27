@@ -435,13 +435,35 @@ class LoadBeamMapStep(InitializationStep):
             self.print_status(f"No beam map at {map_file}, skipping")
             return context
         try:
-            beamline.beam_map = load_beam_map(map_file)
+            beamline.beam_map = load_beam_map(
+                map_file, endstation=beamline.settings.get("endstation")
+            )
         except Exception as e:
             print(f"  Error loading beam map from {map_file}: {e}")
             return context
+        bmap = beamline.beam_map
         self.print_substep(
-            f"Loaded {len(beamline.beam_map.nodes)} nodes from {map_file}"
+            f"Loaded {len(bmap.nodes)} nodes from {map_file}, "
+            f"endstation {bmap.endstation}"
         )
+        md = getattr(beamline, "md", None)
+        if md is not None and bmap.endstation is not None:
+            md["endstation"] = bmap.endstation
+        try:
+            bmap.publish(
+                GLOBAL_USER_STATUS.request_status_dict("BEAM_MAP", use_redis=True)
+            )
+        except Exception as e:
+            print(f"  Beam map not published to Redis: {e}")
+        namespace = context.get("namespace")
+        if namespace is not None:
+            from .beam_map import beam_expected, beam_status, why_no_beam
+
+            namespace.update(
+                beam_expected=beam_expected,
+                why_no_beam=why_no_beam,
+                beam_status=beam_status,
+            )
         return context
 
 
