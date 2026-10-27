@@ -51,6 +51,7 @@ class BeamlineModel:
         "redis",
         "RE",
         "md",
+        "beam_map",
     ]
 
     def __init__(self, *args, **kwargs):
@@ -651,6 +652,7 @@ class BeamlineModel:
         self.supplemental_data = SupplementalData()
         self.md = {}
         self.RE = None
+        self.beam_map = None
         self.settings = StatusDict()
         self.devices = StatusDict()
         self.config = {}

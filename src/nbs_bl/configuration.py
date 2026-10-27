@@ -144,6 +144,7 @@ class LoadSettingsStep(InitializationStep):
             "device_filename": "devices.toml",
             "beamline_filename": "beamline.toml",
             "sim_filename": "sim_conf.toml",
+            "beam_map_filename": "beam_map.toml",
         }
         startup_dir = context["startup_dir"]
         settings_file = join(startup_dir, context.get("beamline_filename", _default_settings["beamline_filename"]))
@@ -412,6 +413,38 @@ class SetupSpecialDevicesStep(InitializationStep):
         return context
 
 
+class LoadBeamMapStep(InitializationStep):
+    """Load the beamline map, whose node status PVs come from nbs-map-ioc"""
+
+    @property
+    def name(self) -> str:
+        return "Load Beam Map"
+
+    @property
+    def depends_on(self) -> list[type]:
+        return [LoadSettingsStep]
+
+    def execute(self, beamline: BeamlineModel, context: dict) -> dict:
+        from .beam_map import load_beam_map
+
+        map_file = join(
+            context["startup_dir"],
+            beamline.settings.get("beam_map_filename", "beam_map.toml"),
+        )
+        if not exists(map_file):
+            self.print_status(f"No beam map at {map_file}, skipping")
+            return context
+        try:
+            beamline.beam_map = load_beam_map(map_file)
+        except Exception as e:
+            print(f"  Error loading beam map from {map_file}: {e}")
+            return context
+        self.print_substep(
+            f"Loaded {len(beamline.beam_map.nodes)} nodes from {map_file}"
+        )
+        return context
+
+
 class UserStartupHook(InitializationStep):
     """Configure modules"""
 
@@ -536,6 +569,7 @@ class BeamlineInitializer:
             InitializeRunEngineStep(),
             LoadDevicesStep(),
             SetupSpecialDevicesStep(),
+            LoadBeamMapStep(),
             UserStartupHook(),
             LoadPlansStep(),
             InitializeGlobalNamespaceStep(),
