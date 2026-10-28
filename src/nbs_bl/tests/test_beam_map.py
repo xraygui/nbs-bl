@@ -254,3 +254,23 @@ def test_setup_step_attaches_devices():
     assert bl.beam_map.nodes["branch1"].devices == ["det"]
     assert ns["devices_at"] is devices_at
     assert ns["node_of"] is node_of
+
+
+def test_suspender_watches_endstation_beam_expected(monkeypatch):
+    import nbs_bl.beam_map as bm
+
+    bmap = fake_map()
+    monkeypatch.setattr(bm, "_current_map", lambda: bmap)
+    (sus,) = bm.beam_map_suspender(sleep=1)
+    assert sus._sig is bmap.nodes["branch1"].beam_expected
+    assert bm.beam_map_suspender(sleep=1) == [sus]
+
+
+def test_no_suspender_without_a_map(monkeypatch):
+    import nbs_bl.beam_map as bm
+
+    def no_map():
+        raise RuntimeError("No beam map loaded")
+
+    monkeypatch.setattr(bm, "_current_map", no_map)
+    assert bm.beam_map_suspender() == []

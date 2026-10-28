@@ -334,3 +334,37 @@ def devices_at(node=None):
 def node_of(device):
     """The beam map node ``device`` (a name) sits on, or None."""
     return _current_map().node_of(device)
+
+
+_SUSPENDERS = {}
+
+
+def beam_map_suspender(sleep=5):
+    """
+    Suspenders that pause scans while no beam is expected at the endstation.
+
+    Registered as the ``beam_map`` entry point in ``nbs_bl.suspenders``; list
+    it under ``[settings] suspenders`` in beamline.toml. Scans resume ``sleep``
+    seconds after the beam map says beam is expected again.
+
+    Returns
+    -------
+    list
+        One SuspendBoolLow on the endstation node's BeamExpected, or no
+        suspenders when there is no beam map.
+    """
+    from bluesky.suspenders import SuspendBoolLow
+
+    try:
+        bmap = _current_map()
+    except RuntimeError:
+        return []
+    node = bmap._node(None)
+    key = (id(bmap), node.name, sleep)
+    if key not in _SUSPENDERS:
+        _SUSPENDERS[key] = SuspendBoolLow(
+            node.beam_expected,
+            sleep=sleep,
+            tripped_message=f"no beam expected at {bmap.endstation} (beam map)",
+        )
+    return [_SUSPENDERS[key]]
