@@ -3,20 +3,45 @@ from .help import add_to_plan_list, add_to_func_list
 from bluesky.plan_stubs import rd
 
 
-@add_to_plan_list
-def open_shutter():
-    """Opens all default shutters, does not check any other shutters!"""
-    shutter = GLOBAL_BEAMLINE.default_shutter
-    if shutter is not None:
-        yield from shutter.open()
+def _get_shutter(shutter):
+    if shutter is None:
+        return GLOBAL_BEAMLINE.default_shutter
+    shutters = GLOBAL_BEAMLINE.shutters.devices
+    if shutter not in shutters:
+        raise ValueError(f"{shutter!r} is not a shutter; shutters are {sorted(shutters)}")
+    return shutters[shutter]
 
 
 @add_to_plan_list
-def close_shutter():
-    """Closes all default shutters"""
-    shutter = GLOBAL_BEAMLINE.default_shutter
-    if shutter is not None:
-        yield from shutter.close()
+def open_shutter(shutter: str = None):
+    """
+    Open a shutter.
+
+    Parameters
+    ----------
+    shutter : str, optional
+        Name of a device in the shutters group. Defaults to the default
+        shutter. Other shutters are not checked.
+    """
+    device = _get_shutter(shutter)
+    if device is not None:
+        yield from device.open()
+
+
+@add_to_plan_list
+def close_shutter(shutter: str = None):
+    """
+    Close a shutter.
+
+    Parameters
+    ----------
+    shutter : str, optional
+        Name of a device in the shutters group. Defaults to the default
+        shutter.
+    """
+    device = _get_shutter(shutter)
+    if device is not None:
+        yield from device.close()
 
 
 @add_to_plan_list
