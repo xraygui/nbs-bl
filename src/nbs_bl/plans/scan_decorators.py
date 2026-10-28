@@ -36,7 +36,20 @@ def wrap_scantype(scantype):
     return decorator
 
 
+_warned_unconfigured = False
+
+
 def _beamline_setup(func):
+    global _warned_unconfigured
+    if not GLOBAL_BEAMLINE.config and not _warned_unconfigured:
+        import warnings
+
+        _warned_unconfigured = True
+        warnings.warn(
+            "Scans were decorated before the beamline config was loaded, so has_motorized_samples "
+            "and has_slits are ignored (samples will not move). Run load_and_configure_everything() "
+            "before importing nbs_bl.plans."
+        )
     blconf = GLOBAL_BEAMLINE.config.get("configuration", {})
     if blconf.get("has_slits", False):
         func = _slit_setup(func)
