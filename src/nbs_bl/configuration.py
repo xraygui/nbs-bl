@@ -430,6 +430,11 @@ class SetupBeamMapStep(InitializationStep):
         self.print_substep(
             f"Beam map {bmap.name}: {len(bmap.nodes)} nodes, endstation {bmap.endstation}"
         )
+        device_config = (getattr(beamline, "config", None) or {}).get("devices", {})
+        bmap.attach_devices(device_config)
+        n_devices = sum(len(node.devices) for node in bmap.nodes.values())
+        n_nodes = sum(1 for node in bmap.nodes.values() if node.devices)
+        self.print_substep(f"{n_devices} devices on {n_nodes} nodes")
         md = getattr(beamline, "md", None)
         if md is not None and bmap.endstation is not None:
             md["endstation"] = bmap.endstation
@@ -441,13 +446,43 @@ class SetupBeamMapStep(InitializationStep):
             print(f"  Beam map not published to Redis: {e}")
         namespace = context.get("namespace")
         if namespace is not None:
-            from .beam_map import beam_expected, beam_status, why_no_beam
+            from .beam_map import beam_expected, beam_status, devices_at, node_of, why_no_beam
 
             namespace.update(
                 beam_expected=beam_expected,
                 why_no_beam=why_no_beam,
                 beam_status=beam_status,
+                devices_at=devices_at,
+                node_of=node_of,
             )
+        return context
+
+
+class SetupDeviceInfoStep(InitializationStep):
+    """Publish static device descriptions to DEVICE_INFO and add device_info"""
+
+    @property
+    def name(self) -> str:
+        return "Setup Device Info"
+
+    @property
+    def depends_on(self) -> list[type]:
+        return [LoadDevicesStep]
+
+    def execute(self, beamline: BeamlineModel, context: dict) -> dict:
+        from .device_info import device_info
+
+        info = device_info(beamline=beamline)
+        self.print_substep(f"Describing {len(info)} devices")
+        try:
+            published = GLOBAL_USER_STATUS.request_status_dict("DEVICE_INFO", use_redis=True)
+            published.clear()
+            published.update(info)
+        except Exception as e:
+            print(f"  Device info not published to Redis: {e}")
+        namespace = context.get("namespace")
+        if namespace is not None:
+            namespace["device_info"] = device_info
         return context
 
 
@@ -576,6 +611,7 @@ class BeamlineInitializer:
             LoadDevicesStep(),
             SetupSpecialDevicesStep(),
             SetupBeamMapStep(),
+            SetupDeviceInfoStep(),
             UserStartupHook(),
             LoadPlansStep(),
             InitializeGlobalNamespaceStep(),

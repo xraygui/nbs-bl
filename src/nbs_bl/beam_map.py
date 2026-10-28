@@ -16,6 +16,10 @@ Load it from devices.toml::
     map_file = "beam_map.toml"
     endstation = "es_chamber"
 
+Devices are placed on nodes by the ``_node`` key of their devices.toml entry
+(``attach_devices``); an ``_alias`` entry without its own ``_node`` sits on
+its root device's node.
+
 ``endstation`` names the node whose beam this beamline cares about.
 ``beam_expected()`` and ``why_no_beam()`` answer for it, and ``publish``
 keeps a JSON-able copy of the tree and every node's status in a status dict
@@ -51,6 +55,7 @@ class MapNode(Device):
         self.upstream = upstream
         self.desc = desc
         self.children = []
+        self.devices = []
 
     def status(self):
         """Read the node's four status PVs."""
@@ -159,6 +164,47 @@ class BeamMap(Device):
     def status(self, node=None):
         return self._node(node).status()
 
+    def attach_devices(self, device_config):
+        """
+        Place devices on nodes from their devices.toml ``_node`` keys.
+
+        Parameters
+        ----------
+        device_config : dict
+            The raw devices.toml contents. Deferred devices are included. An
+            ``_alias`` entry without its own ``_node`` takes its root
+            device's node. Entries naming an unknown node are skipped with a
+            warning. Replaces any earlier attachment.
+        """
+        for node in self.nodes.values():
+            node.devices = []
+        for name, entry in device_config.items():
+            if not isinstance(entry, dict) or name == self.name:
+                continue
+            if entry.get("_role") == "beam_map":
+                continue
+            node = entry.get("_node")
+            if node is None and "_alias" in entry:
+                root = device_config.get(entry["_alias"].split(".")[0], {})
+                node = root.get("_node") if isinstance(root, dict) else None
+            if node is None:
+                continue
+            if node not in self.nodes:
+                print(f"Beam map: device {name} is on unknown node {node!r}, skipping it")
+                continue
+            self.nodes[node].devices.append(name)
+
+    def devices_at(self, node=None):
+        """Names of the devices on ``node`` (default: the endstation)."""
+        return list(self._node(node).devices)
+
+    def node_of(self, device):
+        """The node ``device`` (a name) sits on, or None."""
+        for name, node in self.nodes.items():
+            if device in node.devices:
+                return name
+        return None
+
     def beam_expected(self, node=None):
         """Whether beam is expected at ``node`` (default: the endstation)."""
         return bool(self._node(node).beam_expected.get())
@@ -184,6 +230,7 @@ class BeamMap(Device):
                 "upstream": node.upstream,
                 "children": list(node.children),
                 "desc": node.desc,
+                "devices": list(node.devices),
             }
             entry.update(self._status.get(name, dict.fromkeys(FIELDS)))
             nodes[name] = entry
@@ -277,3 +324,13 @@ def why_no_beam(node=None):
 def beam_status(node=None):
     """Beam expected and the reason, for ``node`` (default: the endstation)."""
     return _current_map().beam_status(node)
+
+
+def devices_at(node=None):
+    """Names of the devices on ``node`` (default: the endstation)."""
+    return _current_map().devices_at(node)
+
+
+def node_of(device):
+    """The beam map node ``device`` (a name) sits on, or None."""
+    return _current_map().node_of(device)

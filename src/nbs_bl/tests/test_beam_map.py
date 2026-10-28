@@ -179,3 +179,78 @@ def test_beam_map_role_is_allowed():
 
     assert "beam_map" not in BeamlineModel.reserved
     assert BeamlineModel().beam_map is None
+
+
+DEVICE_CONFIG = {
+    "fe": {"_target": "x.Shutter", "_node": "front_end", "prefix": "P:fe:"},
+    "mirror": {"_target": "x.Mirror", "_node": "m1", "_defer_loading": True},
+    "mirror_x": {"_alias": "mirror.x"},
+    "mirror_y": {"_alias": "mirror.y", "_node": "branch2"},
+    "det": {"_target": "x.Det", "_node": "branch1"},
+    "lost": {"_target": "x.Det", "_node": "nowhere"},
+    "loose": {"_target": "x.Det"},
+    "beam_map": {"_target": "nbs_bl.beam_map.BeamMapFactory", "_role": "beam_map", "_node": "m1"},
+}
+
+
+def test_attach_devices_alias_inherits_root_node(capsys):
+    bmap = fake_map()
+    bmap.attach_devices(DEVICE_CONFIG)
+    assert bmap.nodes["m1"].devices == ["mirror", "mirror_x"]
+    assert bmap.nodes["branch2"].devices == ["mirror_y"]
+    assert bmap.nodes["front_end"].devices == ["fe"]
+    assert "lost" in capsys.readouterr().out
+    assert bmap.node_of("lost") is None
+    assert bmap.node_of("loose") is None
+    assert bmap.node_of("beam_map") is None
+
+
+def test_devices_at_and_node_of():
+    bmap = fake_map(endstation="branch1")
+    bmap.attach_devices(DEVICE_CONFIG)
+    assert bmap.devices_at() == ["det"]
+    assert bmap.devices_at("m1") == ["mirror", "mirror_x"]
+    assert bmap.node_of("mirror_x") == "m1"
+    assert bmap.node_of("nope") is None
+
+
+def test_attach_devices_is_idempotent():
+    bmap = fake_map()
+    bmap.attach_devices(DEVICE_CONFIG)
+    bmap.attach_devices(DEVICE_CONFIG)
+    assert bmap.nodes["m1"].devices == ["mirror", "mirror_x"]
+    bmap.attach_devices({"det": {"_node": "m1"}})
+    assert bmap.nodes["m1"].devices == ["det"]
+    assert bmap.nodes["front_end"].devices == []
+
+
+def test_to_dict_lists_devices():
+    bmap = fake_map()
+    bmap.attach_devices(DEVICE_CONFIG)
+    nodes = bmap.to_dict()["nodes"]
+    assert nodes["m1"]["devices"] == ["mirror", "mirror_x"]
+    assert nodes["branch1"]["devices"] == ["det"]
+
+
+def test_module_helpers_use_global_map(monkeypatch):
+    from nbs_bl import beam_map
+    from nbs_bl.beamline import GLOBAL_BEAMLINE
+
+    bmap = fake_map(endstation="branch1")
+    bmap.attach_devices(DEVICE_CONFIG)
+    monkeypatch.setattr(GLOBAL_BEAMLINE, "beam_map", bmap)
+    assert beam_map.devices_at() == ["det"]
+    assert beam_map.node_of("fe") == "front_end"
+
+
+def test_setup_step_attaches_devices():
+    from nbs_bl.configuration import SetupBeamMapStep
+    from nbs_bl.beam_map import devices_at, node_of
+
+    bl = FakeBeamline(fake_map(endstation="branch1"))
+    bl.config = {"devices": DEVICE_CONFIG}
+    ns = {}
+    SetupBeamMapStep().execute(bl, {"startup_dir": ".", "namespace": ns})
+    assert bl.beam_map.nodes["branch1"].devices == ["det"]
+    assert ns["devices_at"] is devices_at
+    assert ns["node_of"] is node_of
