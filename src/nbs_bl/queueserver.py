@@ -1,4 +1,10 @@
-from .status import StatusDict, StatusContainerBase, RedisStatusDict, StatusList
+from .status import (
+    StatusDict,
+    StatusContainerBase,
+    RedisStatusDict,
+    StatusList,
+    DeferredRedisStatusDict,
+)
 from collections import abc
 from ophyd import OphydObject
 # import redis
@@ -23,6 +29,8 @@ class GlobalStatusManager:
         self._redis_host = redis_host
         self._redis_port = redis_port
         self._global_prefix = ""
+        # Redis-backed dicts requested before init_redis, as key -> prefix
+        self._deferred_redis = {}
 
     def init_redis(self, redis_settings):
         """
@@ -42,7 +50,17 @@ class GlobalStatusManager:
 
         self._global_prefix = redis_settings.get("prefix", self._global_prefix)
         self._redis_client = open_redis_client_from_settings(redis_settings)
+        self._bind_deferred()
         return self._redis_client
+
+    def _bind_deferred(self):
+        """Move dicts requested before Redis was up into Redis, keeping the objects."""
+        for key, prefix in list(self._deferred_redis.items()):
+            status_dict = self._status_dict.get(key)
+            if isinstance(status_dict, DeferredRedisStatusDict) and not status_dict.bound:
+                full_prefix = f"{self._global_prefix}{prefix}"
+                status_dict.bind(RedisStatusDict(self._redis_client, prefix=full_prefix))
+            del self._deferred_redis[key]
 
     def add_status(self, key, container: StatusContainerBase):
         """Add a status container to the manager"""
@@ -75,21 +93,19 @@ class GlobalStatusManager:
         StatusDict or RedisStatusDict
             The requested status dictionary
 
-        Raises
-        ------
-        RuntimeError
-            If Redis is requested but not initialized
+        Notes
+        -----
+        If Redis is requested before ``init_redis``, the dict starts as a
+        DeferredRedisStatusDict and moves into Redis when ``init_redis`` runs,
+        so module-level dicts such as PLAN_TIME_DICT still reach Redis.
         """
+        if prefix is None:
+            prefix = key
         if use_redis:
             if self._redis_client is None:
-                import warnings
-
-                warnings.warn(f"Redis not initialized. Using plain StatusDict for {key} instead.")
-                status_dict = StatusDict()
+                status_dict = DeferredRedisStatusDict()
+                self._deferred_redis[key] = prefix
             else:
-                # Construct the full prefix
-                if prefix is None:
-                    prefix = key
                 full_prefix = f"{self._global_prefix}{prefix}"
                 status_dict = RedisStatusDict(self._redis_client, prefix=full_prefix)
         else:

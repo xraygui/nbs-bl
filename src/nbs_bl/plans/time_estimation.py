@@ -55,7 +55,8 @@ def with_repeat(estimator_func):
         repeat_count = plan_args.get("repeat", 1)
 
         # Get reset time from estimation parameters
-        reset_time = estimation_dict.get("reset_time", 0)
+        # add_to_plan_time_dict stores this as "reset"
+        reset_time = estimation_dict.get("reset", estimation_dict.get("reset_time", 0)) or 0
 
         # Calculate base plan time using original estimator
         base_time = estimator_func(plan_name, plan_args, estimation_dict)
@@ -72,9 +73,18 @@ def with_repeat(estimator_func):
 
 
 def get_dwell(plan_args, estimation_dict):
+    """
+    Dwell per point: the plan's own argument, else the entry's default_dwell.
+
+    Plans that omit dwell keep the detectors' current exposure, so a missing
+    argument does not mean zero.
+    """
     dwell = estimation_dict.get("dwell", "dwell")
     if isinstance(dwell, str):
-        return plan_args.get(dwell, 0)
+        value = plan_args.get(dwell)
+        if value is None:
+            value = estimation_dict.get("default_dwell", 0)
+        return value or 0
     else:
         return dwell
 

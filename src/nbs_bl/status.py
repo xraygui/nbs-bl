@@ -109,6 +109,71 @@ class StatusSet(StatusContainerBase, set):
     ]
 
 
+class DeferredRedisStatusDict(StatusDict):
+    """
+    A StatusDict that was asked to live in Redis before Redis was set up.
+
+    It works as a plain dict until ``bind`` is called with a RedisStatusDict,
+    then copies its contents there and writes every later top-level change
+    through. Change whole values (``d[key] = {...}``), not nested items in
+    place, or the Redis copy goes stale.
+    """
+
+    NORMAL_METHODS = []
+    REINIT_METHODS = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._redis = None
+
+    def bind(self, redis_dict):
+        """Replace the contents of ``redis_dict`` with ours and keep it in sync."""
+        redis_dict.clear()
+        for key, value in dict.items(self):
+            redis_dict[key] = value
+        self._redis = redis_dict
+
+    @property
+    def bound(self):
+        return self._redis is not None
+
+    def __setitem__(self, key, value):
+        self._uid = uuid.uuid4()
+        dict.__setitem__(self, key, value)
+        if self._redis is not None:
+            self._redis[key] = value
+
+    def __delitem__(self, key):
+        self._uid = uuid.uuid4()
+        dict.__delitem__(self, key)
+        if self._redis is not None:
+            del self._redis[key]
+
+    def clear(self):
+        self._uid = uuid.uuid4()
+        dict.clear(self)
+        if self._redis is not None:
+            self._redis.clear()
+
+    def pop(self, key, *default):
+        present = key in self
+        value = dict.pop(self, key, *default)
+        if present:
+            self._uid = uuid.uuid4()
+            if self._redis is not None:
+                del self._redis[key]
+        return value
+
+    def update(self, *args, **kwargs):
+        for key, value in dict(*args, **kwargs).items():
+            self[key] = value
+
+    def setdefault(self, key, default=None):
+        if key not in self:
+            self[key] = default
+        return dict.__getitem__(self, key)
+
+
 class RedisStatusDict(StatusContainerBase, RedisJSONDict):
     NORMAL_METHODS = ["__delitem__", "__setitem__", "clear", "pop", "update"]
     REINIT_METHODS = []

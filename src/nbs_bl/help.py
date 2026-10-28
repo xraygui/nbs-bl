@@ -78,18 +78,30 @@ def add_to_plan_time_dict(
     dwell="dwell",
     points=None,
     reset=0,
+    default_dwell=1.0,
     **kwargs,
 ):
+    """
+    Register a plan's time estimate in PLAN_TIME_DICT.
+
+    ``default_dwell`` is the per-point dwell assumed when the plan is called
+    without its dwell argument (detectors then keep their current exposure,
+    1 s by default).
+    """
     key = f.__name__
-    if key not in GLOBAL_PLAN_TIME_DICT:
-        GLOBAL_PLAN_TIME_DICT[key] = {}
-    GLOBAL_PLAN_TIME_DICT[key]["estimator"] = estimator
-    GLOBAL_PLAN_TIME_DICT[key]["fixed"] = fixed
-    GLOBAL_PLAN_TIME_DICT[key]["overhead"] = overhead
-    GLOBAL_PLAN_TIME_DICT[key]["dwell"] = dwell
-    GLOBAL_PLAN_TIME_DICT[key]["points"] = points
-    GLOBAL_PLAN_TIME_DICT[key]["reset"] = reset
-    GLOBAL_PLAN_TIME_DICT[key].update(kwargs)
+    # Assign the whole entry so a Redis-backed dict sees the change
+    entry = dict(GLOBAL_PLAN_TIME_DICT.get(key, {}))
+    entry.update(
+        estimator=estimator,
+        fixed=fixed,
+        overhead=overhead,
+        dwell=dwell,
+        points=points,
+        reset=reset,
+        default_dwell=default_dwell,
+    )
+    entry.update(kwargs)
+    GLOBAL_PLAN_TIME_DICT[key] = entry
     return f
 
 

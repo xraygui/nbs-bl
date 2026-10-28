@@ -26,8 +26,7 @@ def add_to_xas_list(f, key, **plan_info):
     A function decorator that will add the plan to the built-in list
     """
     _add_to_import_list(f, "xas")
-    GLOBAL_XAS_PLANS[key] = {}
-    GLOBAL_XAS_PLANS[key].update(plan_info)
+    GLOBAL_XAS_PLANS[key] = dict(plan_info)
     return f
 
 
