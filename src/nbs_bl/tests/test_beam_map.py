@@ -274,3 +274,14 @@ def test_no_suspender_without_a_map(monkeypatch):
 
     monkeypatch.setattr(bm, "_current_map", no_map)
     assert bm.beam_map_suspender() == []
+
+
+def test_suspenders_resolve_after_config_loads(monkeypatch):
+    import nbs_bl.plans.suspenders as sp
+
+    monkeypatch.setattr(sp, "_SUSPENDER_CACHE", None)
+    monkeypatch.setattr(sp.GLOBAL_BEAMLINE, "config", {})
+    monkeypatch.setattr(sp, "get_suspender_entrypoints", lambda: ["sus"])
+    assert sp._configured_suspenders() == []
+    monkeypatch.setattr(sp.GLOBAL_BEAMLINE, "config", {"settings": {"suspenders": ["beam_map"]}})
+    assert sp._configured_suspenders() == ["sus"]

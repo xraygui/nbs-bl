@@ -41,10 +41,25 @@ def get_suspender_entrypoints():
     return suspenders
 
 
-def dynamic_suspenders(func):
-    # Load suspenders from entrypoints at decoration time
-    suspenders = get_suspender_entrypoints()
+_SUSPENDER_CACHE = None
 
+
+def _configured_suspenders():
+    """
+    Suspenders named in the beamline config, loaded once the config exists.
+
+    Scans are decorated at import, often before the beamline config is
+    loaded, so the lookup happens when a plan runs rather than at decoration.
+    """
+    global _SUSPENDER_CACHE
+    if _SUSPENDER_CACHE is None:
+        if not GLOBAL_BEAMLINE.config:
+            return []
+        _SUSPENDER_CACHE = get_suspender_entrypoints()
+    return _SUSPENDER_CACHE
+
+
+def dynamic_suspenders(func):
     @merge_func(func)
     def wrapper(*args, skip_suspenders=False, **kwargs):
         """
@@ -53,7 +68,7 @@ def dynamic_suspenders(func):
         skip_suspenders : bool, optional
             If True, do not install suspenders
         """
-        # Check if suspenders should be skipped
+        suspenders = [] if skip_suspenders else _configured_suspenders()
 
         if skip_suspenders or not suspenders:
             return (yield from func(*args, **kwargs))
