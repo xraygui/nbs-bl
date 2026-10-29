@@ -16,6 +16,13 @@ from nbs_bl.plans.groups import group
 from nbs_bl.plans.plan_stubs import set_exposure
 from nbs_bl.queueserver import request_update, get_status
 from nbs_bl.samples import list_samples
+from nbs_bl.plans.alignment import (
+    calibrate_beam_offset,
+    calibrate_bar,
+    calibrate_bar_angle,
+    calibrate_sides,
+    load_saved_manipulator_calibration,
+)
 from nbs_bl.shutters import open_shutter, close_shutter, is_shutter_open, list_shutters
 from nbs_bl.beamline import GLOBAL_BEAMLINE
 from nbs_bl.modes import activate_mode, deactivate_mode

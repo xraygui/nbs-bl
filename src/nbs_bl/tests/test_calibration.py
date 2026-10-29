@@ -142,3 +142,78 @@ def test_small_negative_rotation_keeps_sides_near_nominal():
         m.set_sample(f"side{n + 1}")
         angles.append(m.sample_rotation_to_manip_rotation(0))
     assert angles == pytest.approx([-2, 88, 178, 268], abs=1e-9)
+
+
+# Saved calibration and plan guards
+
+from ..beamline import GLOBAL_BEAMLINE
+from ..geometry.bars import Bar1d
+from ..manipulator_calibration import restore_manipulator_calibration, save_side
+
+
+def test_restore_round_trip():
+    holder = Standard2SidedBar(15, 3, 150)
+    m = manipulator(holder)
+    config = {}
+    moved = [np.asarray(p) + (0.5, 0, 0) for p in frame_points(holder, 1)]
+    save_side(m, 2, moved, config)
+    m.set_rotation_center(1.25, 0)
+    config["rotation_center"] = [1.25, 0.0]
+
+    fresh = manipulator(Standard2SidedBar(15, 3, 150))
+    assert restore_manipulator_calibration(fresh, config)
+    np.testing.assert_allclose(frame_points(fresh.holder, 1), moved, atol=1e-9)
+    np.testing.assert_allclose(fresh.rotation_center[:2], [1.25, 0])
+
+
+def test_four_sided_calibration_is_not_applied_to_a_plate():
+    square = manipulator(Standard4SidedBar(24.5, 215))
+    config = {}
+    save_side(square, 1, frame_points(square.holder, 0), config)
+    plate = manipulator(Standard2SidedBar(15, 3, 150))
+    before = frame_points(plate.holder, 0)
+    with pytest.warns(UserWarning, match="not applying"):
+        assert not restore_manipulator_calibration(plate, config)
+    np.testing.assert_allclose(frame_points(plate.holder, 0), before)
+
+
+def test_legacy_calibration_loads_only_onto_a_square_bar():
+    square = manipulator(Standard4SidedBar(24.5, 215))
+    points = [np.asarray(p) + (0, 0.3, 0) for p in frame_points(square.holder, 0)]
+    config = {
+        "origin": [0.7, 0.0, 464.0, 0.0],
+        "calibration": {"1": [list(p) for p in points]},
+    }
+    assert restore_manipulator_calibration(square, config)
+    np.testing.assert_allclose(frame_points(square.holder, 0), points, atol=1e-9)
+    np.testing.assert_allclose(square.rotation_center[:2], [0.7, 0])
+    plate = manipulator(Standard2SidedBar(15, 3, 150))
+    with pytest.warns(UserWarning):
+        assert not restore_manipulator_calibration(plate, config)
+
+
+@pytest.fixture
+def primary(monkeypatch):
+    def use(holder):
+        m = manipulator(holder)
+        monkeypatch.setattr(GLOBAL_BEAMLINE, "primary_sampleholder", m, raising=False)
+        return m
+
+    return use
+
+
+def test_calibrate_sides_refuses_a_plate(primary):
+    from ..plans.alignment import calibrate_sides
+
+    primary(Standard2SidedBar(15, 3, 150))
+    with pytest.raises(ValueError, match="calibrate_bar"):
+        next(calibrate_sides())
+
+
+def test_plans_refuse_holders_without_faces(primary):
+    from ..plans.alignment import calibrate_bar
+
+    m = primary(Standard4SidedBar(24.5, 215))
+    m.set_holder(Bar1d())
+    with pytest.raises(TypeError, match="no bar faces"):
+        next(calibrate_bar())

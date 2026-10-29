@@ -96,9 +96,10 @@ are dropped: `calibrate_sides` (fast) supersedes them. *(My call.)*
   to today's `Standard4SidedBar(24.5, 215)`.
 - Which detector aligns: the existing `direct_alignment` / `indirect_alignment`
   roles.
-- Its threshold: `beamline.toml [devices] sc = { threshold = ... }`, which
-  nbs-bl currently ignores; I'll make the loader pass it to
-  `DetectorGroup.add(threshold=...)`.
+- Its threshold, set in the profile's startup (`bl.detectors.thresholds`).
+  `beamline.toml [devices] sc = { threshold = ... }` is still ignored, because
+  the loader replaces `[devices]` with `devices.toml`; wiring it up is a
+  separate change. *(Changed during implementation.)*
 - Optional tuning defaults in `beamline.toml [settings.alignment]` (lever arm,
   V angles, max fit rms, bump above the bar end). Plan kwargs override them.
 
@@ -111,8 +112,9 @@ are dropped: `calibrate_sides` (fast) supersedes them. *(My call.)*
   holder type, and the rigid fit. Saved points are applied only when the saved
   holder type and side count match the current holder, so a 4-sided
   calibration is never loaded onto a 2-sided bar.
-- `nbs_bl.startup` loads the saved calibration after the devices are built
-  (plain function, not a plan).
+- The "Setup Special Devices" startup step restores the saved calibration
+  after the sample holder is set up (`nbs_bl.manipulator_calibration`, no
+  plan imports), and `nbs_bl.startup` imports the plans.
 
 ## Related fix
 

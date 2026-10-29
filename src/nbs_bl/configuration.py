@@ -408,6 +408,15 @@ class SetupSpecialDevicesStep(InitializationStep):
 
     def execute(self, beamline: BeamlineModel, context: dict) -> dict:
         beamline.handle_special_devices(namespace=context.get("namespace"))
+        manipulator = beamline.primary_sampleholder
+        if manipulator is not None and hasattr(manipulator, "set_rotation_center"):
+            from nbs_bl.manipulator_calibration import restore_manipulator_calibration
+
+            try:
+                if restore_manipulator_calibration(manipulator):
+                    self.print_substep("Restored the saved manipulator calibration")
+            except Exception as e:
+                print(f"Error restoring the manipulator calibration: {e}")
 
         return context
 
