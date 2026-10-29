@@ -88,22 +88,46 @@ class AbsoluteBar(GeometryBase):
         return side_md, side_frames
 
 
-class Standard4SidedBar(GeometryBase):
-    def __init__(self, width, length):
+class RectangularBar(GeometryBase):
+    """
+    A bar with a rectangular cross-section and samples on some of its faces.
+
+    The faces are numbered 0-3 round the cross-section, in the order they
+    come edge-on to the beam as r increases by 90 degrees. Face 0 is side 1.
+    Each side's origin is its corner at the end of the bar shared with the
+    next face round.
+
+    Parameters
+    ----------
+    across : float
+        Thickness of the bar normal to face 0 (and face 2).
+    along : float
+        Thickness of the bar normal to face 1 (and face 3), i.e. the width
+        of face 0.
+    length : float
+        Length of the bar.
+    faces : sequence of int
+        Faces that hold samples, in side order.
+    """
+
+    def __init__(self, across, along, length, faces=(0, 1, 2, 3)):
+        self.across = across
+        self.along = along
         self.length = length
-        self.sides = 4
-        self.width = width
+        self.faces = tuple(faces)
+        self.sides = len(self.faces)
+
+    @property
+    def half_extents(self):
+        """(a, b): half-extents normal to face 0 and to face 1."""
+        return self.across / 2.0, self.along / 2.0
+
+    @property
+    def is_square(self):
+        return self.across == self.along
 
     def make_sample_frame(self, position):
         side = position.get("side")
-        # origin = position.get("origin", "bar")
-        # if origin in ["abs", "absolute"]:
-        #     x, y, z, r = position.get("coordinates")
-        #     origin = (x, y, z)
-        #     parent_frame = self.manip_frame.parent
-        #     sample_frame = parent_frame.make_child_frame(origin=origin)
-
-        # else:
         x1, y1, x2, y2 = position.get("coordinates")
         z = position.get("thickness", 0)
         origin = (0.5 * (x1 + x2), 0.5 * (y1 + y2), z)
@@ -116,17 +140,17 @@ class Standard4SidedBar(GeometryBase):
         axes = [(1, 0, 0), (0, 0, 1), (0, -1, 0)]
         origin = (0, 0, -1 * self.length)
         self.bar_frame = self.manip_frame.make_child_frame(*axes, origin=origin)
-        side_axes = [
+        face_axes = [
             [(0, 0, 1), (0, 1, 0), (-1, 0, 0)],
             [(-1, 0, 0), (0, 1, 0), (0, 0, -1)],
             [(0, 0, -1), (0, 1, 0), (1, 0, 0)],
             [(1, 0, 0), (0, 1, 0), (0, 0, 1)],
         ]
-        hw = self.width / 2.0
-        side_origins = [(-hw, 0, -hw), (hw, 0, -hw), (hw, 0, hw), (-hw, 0, hw)]
+        a, b = self.half_extents
+        face_origins = [(-a, 0, -b), (a, 0, -b), (a, 0, b), (-a, 0, b)]
         self.side_frames = [
-            self.bar_frame.make_child_frame(*axes, origin=origin)
-            for axes, origin in zip(side_axes, side_origins)
+            self.bar_frame.make_child_frame(*face_axes[f], origin=face_origins[f])
+            for f in self.faces
         ]
 
     def update_side(self, side_index, p1, p2, p3):
@@ -213,6 +237,34 @@ class Standard4SidedBar(GeometryBase):
                     name = sample_dict.pop("sample_name")
                     sample_dict["name"] = name
         return samples
+
+
+class Standard4SidedBar(RectangularBar):
+    """A square bar with samples on all four sides, 90 degrees apart."""
+
+    def __init__(self, width, length):
+        super().__init__(width, width, length, faces=(0, 1, 2, 3))
+        self.width = width
+
+
+class Standard2SidedBar(RectangularBar):
+    """
+    A flat plate with samples on both broad faces, 180 degrees apart.
+
+    Parameters
+    ----------
+    width : float
+        Width of the sample faces.
+    thickness : float
+        Thickness of the plate.
+    length : float
+        Length of the plate.
+    """
+
+    def __init__(self, width, thickness, length):
+        super().__init__(thickness, width, length, faces=(0, 2))
+        self.width = width
+        self.thickness = thickness
 
 
 class Bar1d(GeometryBase):

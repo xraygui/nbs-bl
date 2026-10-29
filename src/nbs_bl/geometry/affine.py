@@ -206,15 +206,22 @@ def angle_between_vectors_2d(v1, v2):
     # Calculate the angle using atan2
     angle = np.arctan2(v2[1], v2[0]) - np.arctan2(v1[1], v1[0])
 
-    # Normalize the angle to be between -pi and pi
+    # Normalize the angle to be between 0 and 2 pi
     return angle % (2 * np.pi)
 
 
 def find_rotation(child_frame, child_ax, parent_frame, parent_ax, around_ax=2):
+    """
+    Angle (radians) about around_ax that turns parent_ax onto child_ax.
+
+    Wrapped into [-45, 315) degrees, so the sides of a bar keep r near 0,
+    90, 180 and 270 when the bar is turned a little either way on its mount.
+    """
     origin = child_frame.to_frame([0, 0, 0], parent_frame)
     vector = child_frame.to_frame(child_ax, parent_frame) - origin
 
     angle = angle_between_vectors_2d(
         np.delete(vector, around_ax), np.delete(parent_ax, around_ax)
     )
-    return angle
+    quarter = np.pi / 4
+    return (angle + quarter) % (2 * np.pi) - quarter
