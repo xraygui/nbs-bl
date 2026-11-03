@@ -25,12 +25,23 @@ def publish_to_tiled(run_engine, config, print_substep=print):
     for key in catalog_path:
         client = client[key]
 
+    TILED_BACKUP_ROOT = f"/nsls2/data/sst/{config.get('name')}/shared/config/bluesky/tiled_backup"
+
     if subscribe_method == "post_document":
-        callback = client.post_document
+        from bluesky_tiled_plugins import BufferingWrapper, TiledInserter
+        callback = BufferingWrapper(TiledInserter(
+            client,
+            config.get('name'),
+            backup_directory=f"{TILED_BACKUP_ROOT}/raw")
+        )
     elif subscribe_method == "tiled_writer":
-        from bluesky_tiled_plugins import TiledWriter
+        from bluesky_tiled_plugins import BufferingWrapper, TiledWriter
         print_substep("publish_to_tiled: validate=False")
-        callback = TiledWriter(client, validate=False)
+        callback = BufferingWrapper(TiledWriter(
+            client,
+            validate=False,
+            backup_directory=f"{TILED_BACKUP_ROOT}/sql")
+        )
     else:
         raise ValueError(f"Invalid subscribe method: {subscribe_method}")
     run_engine.subscribe(callback)

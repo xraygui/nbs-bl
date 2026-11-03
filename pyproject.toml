@@ -29,7 +29,8 @@ dependencies = ["bluesky",
     "numpydoc",
     "nbs-core>=0.2",
     "nslsii",
-    'tomli ; python_version < "3.11"']
+    'tomli ; python_version < "3.11"',
+    "bluesky-tiled-plugins>=2.0.13"]
 
 [project.urls]
 homepage = "https://github.com/xraygui/nbs-bl"
